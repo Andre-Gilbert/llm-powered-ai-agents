@@ -41,7 +41,7 @@ class Tool(BaseModel):
             }
         return tool_input
 
-    def run(self, tool_input: dict[str, Any]) -> str:
+    def invoke(self, tool_input: dict[str, Any]) -> str:
         logging.info("Tool input: \n%s", tool_input)
         try:
             parsed_input = self._parse_input(tool_input)

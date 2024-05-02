@@ -6,11 +6,12 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from language_models.agents.react import ReActAgent
+
 
 class AgentChain(BaseModel):
-    def invoke(self, prompt: dict[str, Any]):
-        pass
+    agents: list[ReActAgent]
 
-    @classmethod
-    def create(cls) -> AgentChain:
-        pass
+    def invoke(self, prompt: dict[str, Any]):
+        for agent in self.agents:
+            pass

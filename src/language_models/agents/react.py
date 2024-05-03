@@ -3,38 +3,47 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any, Type
 
 import tiktoken
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from language_models.models.llm import ChatMessage, ChatMessageRole, OpenAILanguageModel
 from language_models.tools.tool import Tool
 
-_MODEL_TOKEN_LIMIT = {"gpt-4": 8192, "gpt-4-32k": 32768}
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+    datefmt="%d/%m/%y %H:%M:%S",
+)
+
+_MODEL_TOKEN_LIMIT = {
+    "gpt-4": 8192,
+    "gpt-4-32k": 32768,
+    "gpt-35-turbo": 4096,
+    "gpt-35-turbo-16k": 16385,
+}
 
 _FORMAT_INSTRUCTIONS = """Respond to the user as helpfully and accurately as possible.
 
-You have access to the following tools:
-{tools}
+You have access to the following tools: {tools}
 
 Use a json blob to specify a tool by providing an action (tool name) and an action_input (tool input).
 
 Always use the following JSON response format:
 {{
-    "thought": you should always think about what to do consider previous and subsequent steps,
-    "tool": $TOOL_NAME,
-    "tool_input": a valid dictionary in this format {{"<key>": <value>, ...}},
+    "thought": You should always think about what to do consider previous and subsequent steps,
+    "tool": The tool to use. Must be on of {tool_names},
+    "tool_input": A valid dictionary in this format {{"key": value, ...}},
 }}
 ... (this Thought/Action/Observation can repeat N times)
-
-When you know the final answer, structure your final answer in the following way:
-{output_format}
 
 Always use the following JSON response format for final answers:
 {{
     "thought": I now know the final answer,
-    "final_answer": a valid dictionary in this format {{"<key>": <value>, ...}},
+    "tool": final_answer,
+    "tool_input": A valid dictionary in this format {{"key": value, ...}},
 }}
 """
 
@@ -45,13 +54,13 @@ def extract(response: dict, key: str) -> str | None:
     return value if value is not None and len(value) > 0 else None
 
 
-def num_tokens_from_messages(messages: list[dict]) -> int:
+def num_tokens_from_messages(messages: list[ChatMessage]) -> int:
     """Counts the number of tokens in the conversation history."""
     encoding = tiktoken.get_encoding("cl100k_base")
     num_tokens = 0
     for message in messages:
         num_tokens += 4
-        for key, value in message.items():
+        for key, value in message.model_dump().items():
             num_tokens += len(encoding.encode(value))
             if key == "name":
                 num_tokens += -1
@@ -61,9 +70,14 @@ def num_tokens_from_messages(messages: list[dict]) -> int:
 
 class LLMResponse(BaseModel):
     thought: str
-    tool: str
-    tool_input: dict
-    final_answer: Type[BaseModel]
+    tool: str | None = None
+    tool_input: dict[str, Any] | None = None
+
+
+class AgentResponse(BaseModel):
+    prompt: str
+    final_answer: dict[str, Any]
+    chain_of_thought: list
 
 
 class ReActAgent(BaseModel):
@@ -72,8 +86,9 @@ class ReActAgent(BaseModel):
     llm: OpenAILanguageModel
     tools: dict[str, Tool] | None
     task_prompt: str
-    output_format: str
-    chat_messages: list[dict[str, str]]
+    task_prompt_variables: list[str]
+    output_format: Type[BaseModel]
+    chat_messages: list[ChatMessage]
     iterations: int = 20
 
     def _trim_conversation(self) -> None:
@@ -82,59 +97,85 @@ class ReActAgent(BaseModel):
             del self.chat_messages[1]
             num_tokens = num_tokens_from_messages(self.chat_messages)
 
-    def _parse_response(self, response: str) -> None | dict[str, Any]:
+    def _parse_response(self, response: str) -> tuple[LLMResponse | None, str]:
         try:
             response = json.loads(response, strict=False)
-            thought = extract(response, "thought")
-            tool = extract(response, "tool")
-            tool_input = extract(response, "tool_input")
-            answer = extract(response, "final_answer")
-            parsed = True
+            response = LLMResponse.model_validate(response)
             observation = "Your response format was correct."
         except json.decoder.JSONDecodeError as e:
-            parsed = False
-            thought = None
-            tool = None
-            tool_input = None
-            answer = None
-            observation = (
-                "Your response format was incorrect. Please correct as specified in the first message. "
-                f"The error was: {e}"
-            )
-        return thought, tool, tool_input, answer, observation, parsed
+            response = None
+            observation = f"Your response format was incorrect. The error was: {e}"
+        except ValidationError as e:
+            response = None
+            observation = f"Your response failed validation. The error was: {e}"
+        return response, observation
 
-    def invoke(self, prompt: dict[str, Any]):
-        prompt = self.task_prompt.format(**prompt)
-        self.chat_messages.append({"role": "user", "content": prompt})
-        steps = []
+    def invoke(self, prompt: dict[str, Any]) -> AgentResponse:
+        prompt = self.task_prompt.format(
+            **{
+                variable: prompt.get(variable)
+                for variable in self.task_prompt_variables
+            }
+        )
+        self.chat_messages.append(
+            ChatMessage(role=ChatMessageRole.USER, content=prompt)
+        )
+        chain_of_thought = []
         iterations = 0
         while iterations <= self.iterations:
-            iterations += 1
             self._trim_conversation()
             response = self.llm.get_completion(self.chat_messages)
-            thought, action, action_input, parsed, observation = self._parse_response(
-                response
-            )
-            if parsed:
-                steps.append(
-                    {"thought": thought, "action": action, "action_input": action_input}
-                )
-                if action == "Final Answer":
-                    return {
-                        "prompt": prompt,
-                        "answer": answer,
-                        "intermediate_steps": steps,
-                    }
-                else:
-                    tool = self.tools.get(action, None)
-                    if tool is None:
-                        observation = f"{action} tool doesn't exist. Try one of these tools: {self.tool_names}"
+            response, observation = self._parse_response(response)
+            if response is not None:
+                logging.info("Thought: %s", response.thought)
+                logging.info("Tool: %s", response.tool)
+                logging.info("Tool input: %s", response.tool_input)
+                if response.tool == "Final Answer":
+                    try:
+                        final_answer = self.output_format.model_validate(
+                            response.tool_input
+                        )
+                        return AgentResponse(
+                            prompt=prompt,
+                            final_answer=final_answer.model_dump(),
+                            chain_of_thought=chain_of_thought,
+                        )
+                    except ValidationError as e:
+                        observation = (
+                            f"Your response failed validation. The error was: {e}"
+                        )
+                if self.tools is not None:
+                    tool = self.tools.get(response.tool, None)
+                    if tool is not None:
+                        observation = (
+                            f"Tool response: {tool.invoke(response.tool_input)}"
+                        )
+                        logging.info(observation)
                     else:
-                        observation = tool.invoke(action_input)
+                        observation = (
+                            f"{response.tool} tool doesn't exist."
+                            f" Try one of these tools: {list(self.tools.keys())}"
+                        )
+                chain_of_thought.append(
+                    {
+                        "thought": response.thought,
+                        "tool": response.tool,
+                        "tool_input": response.tool_input,
+                        "observation": observation,
+                    }
+                )
             self.chat_messages.append(
-                {"role": "user", "content": f"Observation: {observation}"}
+                ChatMessage(role=ChatMessageRole.ASSISTANT, content=observation)
             )
-        return {"prompt": prompt, "answer": "", "intermediate_steps": steps}
+            iterations += 1
+        return AgentResponse(
+            prompt=prompt,
+            final_answer={
+                key: None
+                for key in self.output_format.model_json_schema()["properties"]
+            },
+            chain_of_thought=chain_of_thought,
+        )
 
     @classmethod
     def create(
@@ -142,13 +183,20 @@ class ReActAgent(BaseModel):
         llm: OpenAILanguageModel,
         system_prompt: str,
         task_prompt: str,
+        task_prompt_variables: list[str],
         output_format: Type[BaseModel],
         tools: list[Tool] | None = None,
         iterations: int = 20,
     ) -> ReActAgent:
+        output_tool = Tool(
+            name="Final Answer",
+            description="Use this tool to answer the question.",
+            args_schema=output_format,
+        )
+        tools = [output_tool] if tools is None else tools + [output_tool]
         format_instructions = _FORMAT_INSTRUCTIONS.format(
-            tools=[str(tool) for tool in tools] or None,
-            output_format=output_format,
+            tools=[str(tool) for tool in tools],
+            tool_names=[tool.name for tool in tools],
         )
         chat_messages = [
             ChatMessage(
@@ -160,6 +208,7 @@ class ReActAgent(BaseModel):
             llm=llm,
             tools={tool.name: tool for tool in tools},
             task_prompt=task_prompt,
+            task_prompt_variables=task_prompt_variables,
             output_format=output_format,
             chat_messages=chat_messages,
             iterations=iterations,

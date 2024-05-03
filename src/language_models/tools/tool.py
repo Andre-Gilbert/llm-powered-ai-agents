@@ -1,6 +1,5 @@
 """LLM tool."""
 
-import logging
 import re
 from typing import Any, Callable, Type
 
@@ -10,7 +9,7 @@ from pydantic import BaseModel, ValidationError
 class Tool(BaseModel):
     """Class that implements an LLM tool."""
 
-    func: Callable[[Any], Any]
+    func: Callable[[Any], Any] | None = None
     name: str
     description: str
     args_schema: Type[BaseModel] | None = None
@@ -24,9 +23,9 @@ class Tool(BaseModel):
     def __str__(self) -> str:
         args = self.args
         return (
-            f"Tool name: {self.name}, "
-            f"Tool description: {self.description}, "
-            f"Tool input: {re.sub('}', '}}', re.sub('{', '{{', str(args)))}"
+            f"tool name: {self.name}, "
+            f"tool description: {self.description}, "
+            f"tool input: {re.sub('}', '}}', re.sub('{', '{{', str(args)))}"
         )
 
     def _parse_input(self, tool_input: dict[str, Any]) -> dict[str, Any]:
@@ -42,12 +41,11 @@ class Tool(BaseModel):
         return tool_input
 
     def invoke(self, tool_input: dict[str, Any]) -> str:
-        logging.info("Tool input: \n%s", tool_input)
         try:
             parsed_input = self._parse_input(tool_input)
             observation = (
                 str(self.func(**parsed_input)) if parsed_input else str(self.func())
             )
         except ValidationError as e:
-            observation = f"Tool input validation error (tool={self.name}): {e}"
+            observation = f"{self.name} tool input validation error: {e}"
         return observation

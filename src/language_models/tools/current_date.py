@@ -11,6 +11,6 @@ def current_date() -> datetime:
 
 current_date_tool = Tool(
     func=current_date,
-    name="current_date",
-    description="Allows you to access the current local date and time.",
+    name="Current Date",
+    description="Use this tool to access the current local date and time.",
 )

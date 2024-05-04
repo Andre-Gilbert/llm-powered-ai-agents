@@ -9,7 +9,7 @@ from pydantic import BaseModel, ValidationError
 class Tool(BaseModel):
     """Class that implements an LLM tool."""
 
-    func: Callable[[Any], Any] | None = None
+    func: Callable[[Any], Any]
     name: str
     description: str
     args_schema: Type[BaseModel] | None = None

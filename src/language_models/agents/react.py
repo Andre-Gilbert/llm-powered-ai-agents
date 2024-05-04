@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from enum import Enum
 from typing import Any, Type
 
 import tiktoken
@@ -42,7 +43,7 @@ Always use the following JSON response format:
 Always use the following JSON response format for final answers:
 {{
     "thought": I now know the final answer,
-    "tool": final_answer,
+    "tool": "Final Answer",
     "tool_input": A valid dictionary in this format {{"key": value, ...}},
 }}
 """
@@ -70,8 +71,20 @@ def num_tokens_from_messages(messages: list[ChatMessage]) -> int:
 
 class LLMResponse(BaseModel):
     thought: str
-    tool: str | None = None
-    tool_input: dict[str, Any] | None = None
+    tool: str
+    tool_input: dict[str, Any]
+
+
+class LLMCoTStep(str, Enum):
+    SYSTEM = "system"
+    THOUGHT = "thought"
+    TOOL = "tool"
+    OUTPUT = "output"
+
+
+class LLMCoT(BaseModel):
+    step: LLMCoTStep
+    content: str | dict[str, Any]
 
 
 class AgentResponse(BaseModel):
@@ -92,16 +105,18 @@ class ReActAgent(BaseModel):
     iterations: int = 20
 
     def _trim_conversation(self) -> None:
+        """Trims the chat messages to fit the LLM context length."""
         num_tokens = num_tokens_from_messages(self.chat_messages)
         while num_tokens + self.llm.max_tokens >= _MODEL_TOKEN_LIMIT[self.llm.model]:
             del self.chat_messages[1]
             num_tokens = num_tokens_from_messages(self.chat_messages)
 
     def _parse_response(self, response: str) -> tuple[LLMResponse | None, str]:
+        """Parses the LLM response."""
         try:
             response = json.loads(response, strict=False)
             response = LLMResponse.model_validate(response)
-            observation = "Your response format was correct."
+            observation = None
         except json.decoder.JSONDecodeError as e:
             response = None
             observation = f"Your response format was incorrect. The error was: {e}"
@@ -142,28 +157,28 @@ class ReActAgent(BaseModel):
                         )
                     except ValidationError as e:
                         observation = (
-                            f"Your response failed validation. The error was: {e}"
+                            f"Your final answer failed validation. The error was: {e}"
                         )
-                if self.tools is not None:
-                    tool = self.tools.get(response.tool, None)
-                    if tool is not None:
-                        observation = (
-                            f"Tool response: {tool.invoke(response.tool_input)}"
-                        )
-                        logging.info(observation)
-                    else:
-                        observation = (
-                            f"{response.tool} tool doesn't exist."
-                            f" Try one of these tools: {list(self.tools.keys())}"
-                        )
-                chain_of_thought.append(
-                    {
-                        "thought": response.thought,
-                        "tool": response.tool,
-                        "tool_input": response.tool_input,
-                        "observation": observation,
-                    }
-                )
+                else:
+                    if self.tools is not None:
+                        tool = self.tools.get(response.tool)
+                        if tool is not None:
+                            tool_response = tool.invoke(response.tool_input)
+                            observation = f"Tool response: {tool_response}"
+                            logging.info(observation)
+                            chain_of_thought.append(
+                                {
+                                    "thought": response.thought,
+                                    "tool": response.tool,
+                                    "tool_input": response.tool_input,
+                                    "tool_response": tool_response,
+                                }
+                            )
+                        else:
+                            observation = (
+                                f"{response.tool} tool doesn't exist."
+                                f" Try one of these tools: {list(self.tools.keys())}"
+                            )
             self.chat_messages.append(
                 ChatMessage(role=ChatMessageRole.ASSISTANT, content=observation)
             )
@@ -189,6 +204,7 @@ class ReActAgent(BaseModel):
         iterations: int = 20,
     ) -> ReActAgent:
         output_tool = Tool(
+            func=lambda _: None,
             name="Final Answer",
             description="Use this tool to answer the question.",
             args_schema=output_format,

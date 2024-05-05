@@ -40,13 +40,6 @@ class OpenAILanguageModel(BaseModel):
         Returns:
             A chat completion object.
         """
-        # rate_limit_per_minute = (
-        #     settings.GPT_4_REQUEST_LIMIT_PER_MINUTE
-        #     if self.model.startswith("gpt-4")
-        #     else settings.GPT_35_REQUEST_LIMIT_PER_MINUTE
-        # )
-        # delay = int(60.0 / rate_limit_per_minute) + 1
-        # time.sleep(delay)
         response = self.proxy_client.request(
             api_endpoint="completions",
             data={

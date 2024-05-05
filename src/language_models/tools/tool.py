@@ -40,12 +40,10 @@ class Tool(BaseModel):
             }
         return tool_input
 
-    def invoke(self, tool_input: dict[str, Any]) -> str:
+    def invoke(self, tool_input: dict[str, Any]) -> Any:
         try:
             parsed_input = self._parse_input(tool_input)
-            observation = (
-                str(self.func(**parsed_input)) if parsed_input else str(self.func())
-            )
+            observation = self.func(**parsed_input) if parsed_input else self.func()
         except ValidationError as e:
             observation = f"{self.name} tool input validation error: {e}"
         return observation

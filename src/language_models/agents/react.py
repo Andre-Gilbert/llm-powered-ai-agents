@@ -30,23 +30,23 @@ _FORMAT_INSTRUCTIONS = """Respond to the user as helpfully and accurately as pos
 
 You have access to the following tools: {tools}
 
-Use a json blob to specify a tool by providing an action (tool name) and an action_input (tool input).
+Use a JSON blob to specify a thought, a tool by providing an tool key (tool name) and a tool_input key (tool input).
 
-Always use the following JSON response format:
-{{
-    "thought": You should always think about what to do consider previous and subsequent steps,
-    "tool": The tool to use. Must be on of {tool_names},
-    "tool_input": A valid dictionary in this format {{"key": value, ...}},
-}}
-... (this Thought/Action/Observation can repeat N times)
+Valid "tool" values: {tool_names}
 
-Always use the following JSON response format for final answers:
+Follow the following JSON format:
 {{
-    "thought": I now know the final answer,
-    "tool": "Final Answer",
-    "tool_input": A valid dictionary in this format {{"key": value, ...}},
+  "thought": "You should always think about what to do consider previous and subsequent steps.",
+  "tool": "The tool to use.",
+  "tool_input": "Valid key value pairs.",
 }}
-"""
+Observation: tool result
+... (this Thought/Tool/Observation can repeat N times)
+{{
+  "thought": "I now know what to respond.",
+  "tool": "Final Answer.",
+  "tool_input": "Valid key value pairs.",
+}}"""
 
 
 def extract(response: dict, key: str) -> str | None:
@@ -69,28 +69,37 @@ def num_tokens_from_messages(messages: list[ChatMessage]) -> int:
     return num_tokens
 
 
+class LLMCoTStep(str, Enum):
+    PROMPT = "prompt"
+    THOUGHT = "thought"
+    TOOL = "tool"
+    FINAL_ANSWER = "final_answer"
+
+
+class LLMCoTTool(BaseModel):
+    name: str
+    args: dict[str, Any]
+    response: Any
+
+
+class LLMCoT(BaseModel):
+    step: LLMCoTStep
+    content: str | LLMCoTTool | dict[str, Any]
+
+    class Config:
+        use_enum_values = True
+
+
 class LLMResponse(BaseModel):
     thought: str
     tool: str
     tool_input: dict[str, Any]
 
 
-class LLMCoTStep(str, Enum):
-    SYSTEM = "system"
-    THOUGHT = "thought"
-    TOOL = "tool"
-    OUTPUT = "output"
-
-
-class LLMCoT(BaseModel):
-    step: LLMCoTStep
-    content: str | dict[str, Any]
-
-
 class AgentResponse(BaseModel):
     prompt: str
     final_answer: dict[str, Any]
-    chain_of_thought: list
+    chain_of_thought: list[dict[str, Any]]
 
 
 class ReActAgent(BaseModel):
@@ -126,34 +135,45 @@ class ReActAgent(BaseModel):
         return response, observation
 
     def invoke(self, prompt: dict[str, Any]) -> AgentResponse:
+        """Runs the AI agent."""
         prompt = self.task_prompt.format(
             **{
                 variable: prompt.get(variable)
                 for variable in self.task_prompt_variables
             }
         )
+        logging.info("Prompt:\n%s", prompt)
         self.chat_messages.append(
             ChatMessage(role=ChatMessageRole.USER, content=prompt)
         )
-        chain_of_thought = []
+        chain_of_thought: list[LLMCoT] = [
+            LLMCoT(step=LLMCoTStep.PROMPT, content=prompt)
+        ]
         iterations = 0
         while iterations <= self.iterations:
             self._trim_conversation()
             response = self.llm.get_completion(self.chat_messages)
+            logging.info("Raw response:\n%s", response)
             response, observation = self._parse_response(response)
             if response is not None:
-                logging.info("Thought: %s", response.thought)
-                logging.info("Tool: %s", response.tool)
-                logging.info("Tool input: %s", response.tool_input)
+                logging.info("Thought:\n%s", response.thought)
+                chain_of_thought.append(
+                    LLMCoT(step=LLMCoTStep.THOUGHT, content=response.thought)
+                )
                 if response.tool == "Final Answer":
                     try:
-                        final_answer = self.output_format.model_validate(
-                            response.tool_input
+                        logging.info("Final answer:\n%s", response.tool_input)
+                        result = self.output_format.model_validate(response.tool_input)
+                        final_answer = result.model_dump()
+                        chain_of_thought.append(
+                            LLMCoT(step=LLMCoTStep.FINAL_ANSWER, content=final_answer)
                         )
                         return AgentResponse(
                             prompt=prompt,
-                            final_answer=final_answer.model_dump(),
-                            chain_of_thought=chain_of_thought,
+                            final_answer=final_answer,
+                            chain_of_thought=[
+                                step.model_dump() for step in chain_of_thought
+                            ],
                         )
                     except ValidationError as e:
                         observation = (
@@ -161,18 +181,22 @@ class ReActAgent(BaseModel):
                         )
                 else:
                     if self.tools is not None:
+                        logging.info("Tool:\n%s", response.tool)
+                        logging.info("Tool input:\n%s", response.tool_input)
                         tool = self.tools.get(response.tool)
                         if tool is not None:
                             tool_response = tool.invoke(response.tool_input)
-                            observation = f"Tool response: {tool_response}"
+                            observation = f"Tool response:\n{tool_response}"
                             logging.info(observation)
                             chain_of_thought.append(
-                                {
-                                    "thought": response.thought,
-                                    "tool": response.tool,
-                                    "tool_input": response.tool_input,
-                                    "tool_response": tool_response,
-                                }
+                                LLMCoT(
+                                    step=LLMCoTStep.TOOL,
+                                    content=LLMCoTTool(
+                                        name=response.tool,
+                                        args=response.tool_input,
+                                        response=tool_response,
+                                    ),
+                                )
                             )
                         else:
                             observation = (
@@ -189,7 +213,7 @@ class ReActAgent(BaseModel):
                 key: None
                 for key in self.output_format.model_json_schema()["properties"]
             },
-            chain_of_thought=chain_of_thought,
+            chain_of_thought=[step.model_dump() for step in chain_of_thought],
         )
 
     @classmethod
@@ -203,6 +227,7 @@ class ReActAgent(BaseModel):
         tools: list[Tool] | None = None,
         iterations: int = 20,
     ) -> ReActAgent:
+        """Creates a instance of the ReAct agent."""
         output_tool = Tool(
             func=lambda _: None,
             name="Final Answer",

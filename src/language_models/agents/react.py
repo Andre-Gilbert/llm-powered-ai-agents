@@ -36,9 +36,9 @@ Valid "tool" values: {tool_names}
 
 Always use the following JSON format:
 {{
-  "thought": "You should always think about what to do consider previous and subsequent steps.",
-  "tool": "The tool to use.",
-  "tool_input": "Valid key value pairs.",
+  "thought": "You should always think about what to do consider previous and subsequent steps",
+  "tool": "The tool to use",
+  "tool_input": "Valid key value pairs",
 }}
 
 Observation: tool result
@@ -46,9 +46,9 @@ Observation: tool result
 
 When you know the answer, use the following JSON format:
 {{
-  "thought": "I now know what to respond.",
-  "tool": "Final Answer.",
-  "tool_input": "Valid key value pairs.",
+  "thought": "I now know what to respond",
+  "tool": "Final Answer",
+  "tool_input": "Valid key value pairs",
 }}"""
 
 

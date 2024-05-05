@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from enum import Enum
 from typing import Any
 
@@ -61,6 +62,7 @@ class AgentChain(BaseModel):
                         execution_steps=execution_steps,
                     )
             else:
+                logging.info("Running code block:\n%s", block.name)
                 response = block.invoke(prompt)
                 prompt[block.name] = response
                 execution_steps.append(
@@ -82,6 +84,7 @@ class AgentChain(BaseModel):
                     )
                 )
                 if i == len(self.chain) - 1:
+                    logging.info("Code block output:\n%s", response)
                     return AgentChainResponse(
                         prompt=prompt,
                         final_answer={block.name: response},

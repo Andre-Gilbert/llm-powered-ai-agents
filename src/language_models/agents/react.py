@@ -34,14 +34,17 @@ Use a JSON blob to specify a thought, a tool by providing an tool key (tool name
 
 Valid "tool" values: {tool_names}
 
-Follow the following JSON format:
+Always use the following JSON format:
 {{
   "thought": "You should always think about what to do consider previous and subsequent steps.",
   "tool": "The tool to use.",
   "tool_input": "Valid key value pairs.",
 }}
+
 Observation: tool result
 ... (this Thought/Tool/Observation can repeat N times)
+
+When you know the answer, use the following JSON format:
 {{
   "thought": "I now know what to respond.",
   "tool": "Final Answer.",

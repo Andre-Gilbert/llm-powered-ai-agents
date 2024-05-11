@@ -116,6 +116,10 @@ class ReActAgent(BaseModel):
     chat_messages: list[ChatMessage]
     iterations: int = 20
 
+    def reset(self) -> None:
+        """Resets the ReAct agent."""
+        self.chat_messages = [self.chat_messages[0]]
+
     def _trim_conversation(self) -> None:
         """Trims the chat messages to fit the LLM context length."""
         num_tokens = num_tokens_from_messages(self.chat_messages)

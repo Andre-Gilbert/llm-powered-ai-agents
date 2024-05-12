@@ -1,0 +1,17 @@
+{
+  "editor.formatOnSave": true,
+  "editor.insertSpaces": true,
+  "editor.tabSize": 4,
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit"
+  },
+  "pylint.args": ["--rcfile=${workspaceFolder}/.pylintrc"],
+  "isort.args": ["--profile", "black"],
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter"
+  },
+  "black-formatter.args": ["--line-length", "120"],
+  // end of line: LF
+  "files.eol": "\n",
+  "files.trimTrailingWhitespace": true
+}

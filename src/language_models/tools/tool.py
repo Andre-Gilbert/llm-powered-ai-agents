@@ -33,14 +33,11 @@ class Tool(BaseModel):
         input_args = self.args_schema
         if input_args is not None:
             result = input_args.model_validate(tool_input)
-            return {
-                key: getattr(result, key)
-                for key, _ in result.model_dump().items()
-                if key in tool_input
-            }
+            return {key: getattr(result, key) for key, _ in result.model_dump().items() if key in tool_input}
         return tool_input
 
     def invoke(self, tool_input: dict[str, Any]) -> Any:
+        """Invokes a tool given arguments provided by an LLM."""
         try:
             parsed_input = self._parse_input(tool_input)
             observation = self.func(**parsed_input) if parsed_input else self.func()

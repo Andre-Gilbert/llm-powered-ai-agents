@@ -73,11 +73,7 @@ class AgentChain(BaseModel):
                             args=(
                                 None
                                 if block.args is None
-                                else {
-                                    key: prompt.get(key)
-                                    for key in prompt
-                                    if key in block.args
-                                }
+                                else {key: prompt.get(key) for key in prompt if key in block.args}
                             ),
                             response=response,
                         ),

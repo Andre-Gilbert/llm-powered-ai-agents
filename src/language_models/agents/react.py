@@ -143,19 +143,10 @@ class ReActAgent(BaseModel):
 
     def invoke(self, prompt: dict[str, Any]) -> AgentResponse:
         """Runs the AI agent."""
-        prompt = self.task_prompt.format(
-            **{
-                variable: prompt.get(variable)
-                for variable in self.task_prompt_variables
-            }
-        )
+        prompt = self.task_prompt.format(**{variable: prompt.get(variable) for variable in self.task_prompt_variables})
         logging.info("Prompt:\n%s", prompt)
-        self.chat_messages.append(
-            ChatMessage(role=ChatMessageRole.USER, content=prompt)
-        )
-        chain_of_thought: list[LLMCoT] = [
-            LLMCoT(step=LLMCoTStep.PROMPT, content=prompt)
-        ]
+        self.chat_messages.append(ChatMessage(role=ChatMessageRole.USER, content=prompt))
+        chain_of_thought: list[LLMCoT] = [LLMCoT(step=LLMCoTStep.PROMPT, content=prompt)]
         iterations = 0
         while iterations <= self.iterations:
             self._trim_conversation()
@@ -164,28 +155,20 @@ class ReActAgent(BaseModel):
             response, observation = self._parse_response(response)
             if response is not None:
                 logging.info("Thought:\n%s", response.thought)
-                chain_of_thought.append(
-                    LLMCoT(step=LLMCoTStep.THOUGHT, content=response.thought)
-                )
+                chain_of_thought.append(LLMCoT(step=LLMCoTStep.THOUGHT, content=response.thought))
                 if response.tool == "Final Answer":
                     try:
                         logging.info("Final answer:\n%s", response.tool_input)
                         result = self.output_format.model_validate(response.tool_input)
                         final_answer = result.model_dump()
-                        chain_of_thought.append(
-                            LLMCoT(step=LLMCoTStep.FINAL_ANSWER, content=final_answer)
-                        )
+                        chain_of_thought.append(LLMCoT(step=LLMCoTStep.FINAL_ANSWER, content=final_answer))
                         return AgentResponse(
                             prompt=prompt,
                             final_answer=final_answer,
-                            chain_of_thought=[
-                                step.model_dump() for step in chain_of_thought
-                            ],
+                            chain_of_thought=[step.model_dump() for step in chain_of_thought],
                         )
                     except ValidationError as e:
-                        observation = (
-                            f"Your final answer failed validation. The error was: {e}"
-                        )
+                        observation = f"Your final answer failed validation. The error was: {e}"
                 else:
                     if self.tools is not None:
                         logging.info("Tool:\n%s", response.tool)
@@ -210,16 +193,11 @@ class ReActAgent(BaseModel):
                                 f"{response.tool} tool doesn't exist."
                                 f" Try one of these tools: {list(self.tools.keys())}"
                             )
-            self.chat_messages.append(
-                ChatMessage(role=ChatMessageRole.ASSISTANT, content=observation)
-            )
+            self.chat_messages.append(ChatMessage(role=ChatMessageRole.ASSISTANT, content=observation))
             iterations += 1
         return AgentResponse(
             prompt=prompt,
-            final_answer={
-                key: None
-                for key in self.output_format.model_json_schema()["properties"]
-            },
+            final_answer={key: None for key in self.output_format.model_json_schema()["properties"]},
             chain_of_thought=[step.model_dump() for step in chain_of_thought],
         )
 

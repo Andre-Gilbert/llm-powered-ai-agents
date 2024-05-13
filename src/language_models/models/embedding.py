@@ -21,7 +21,7 @@ class SentenceTransformerEmbeddingModel(BaseModel):
             List of embeddings, one for each text.
         """
         texts = list(map(lambda x: x.replace("\n", " "), texts))
-        embeddings = _MODEL.encode(texts)
+        embeddings = _MODEL.encode(texts, show_progress_bar=False)
         return embeddings.tolist()
 
     def embed_query(self, query: str) -> list[float]:

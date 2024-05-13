@@ -1,1 +1,1 @@
-from language_models.vector_stores.faiss import FAISSVectorStore
+from language_models.vector_stores.faiss import DistanceMetric, FAISSVectorStore

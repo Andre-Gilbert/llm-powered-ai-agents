@@ -10,11 +10,10 @@ class BasicRetriever(BaseModel):
     """Class that implements naive RAG."""
 
     vector_store: FAISSVectorStore
-    fetch_k: int = 3
     score_threshold: float = 0.0
 
-    def get_relevant_documents(self, query: str) -> str:
+    def get_relevant_documents(self, user_text: str, fetch_k: int = 5) -> str:
         """Gets relevant documents."""
-        documents = self.vector_store.similarity_search(query, self.fetch_k, self.score_threshold)
+        documents = self.vector_store.similarity_search(user_text, fetch_k, self.score_threshold)
         documents = [document for document, _ in documents]
-        return f"Context:\n\n{format_documents(documents)}"
+        return format_documents(documents)

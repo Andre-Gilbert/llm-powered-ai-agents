@@ -44,7 +44,7 @@ class FAISSVectorStore(BaseModel):
     def add_documents(self, documents: list[Document]) -> None:
         """Adds documents to the FAISS index."""
         texts = [document.page_content for document in documents]
-        embeddings = self.embeddings.embed_texts(texts)
+        embeddings = self.embedding_model.embed_texts(texts)
         vectors = np.array(embeddings, dtype=np.float32)
         if self.index is None:
             if self.distance_metric == DistanceMetric.EUCLIDEAN_DISTANCE:
@@ -65,7 +65,7 @@ class FAISSVectorStore(BaseModel):
         documents: list[Document],
         embedding_model: SentenceTransformerEmbeddingModel,
         distance_metric: DistanceMetric = DistanceMetric.COSINE_SIMILARITY,
-    ) -> VectorStore:
+    ) -> FAISSVectorStore:
         """Creates a FAISS index from texts.
 
         Args:
@@ -104,7 +104,7 @@ class FAISSVectorStore(BaseModel):
         folder_path: str,
         index_filename: str,
         embedding_model: SentenceTransformerEmbeddingModel,
-    ) -> VectorStore:
+    ) -> FAISSVectorStore:
         """Loads the FAISS index and configuration from disk.
 
         Args:

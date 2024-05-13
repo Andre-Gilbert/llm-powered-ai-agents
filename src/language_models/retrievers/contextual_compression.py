@@ -24,7 +24,6 @@ class ContextualCompressionRetriever(BaseModel):
 
     llm: OpenAILanguageModel
     vector_store: FAISSVectorStore
-    fetch_k: int = 3
     score_threshold: float = 0.0
 
     def _parse_output(self, output: str) -> bool:
@@ -39,11 +38,11 @@ class ContextualCompressionRetriever(BaseModel):
         else:
             raise ValueError(f"Expected output value to include either 'YES' or 'NO'. Received {output}.")
 
-    def _compress_documents(self, query: str, documents: list[Document]) -> list[Document]:
+    def _compress_documents(self, user_text: str, documents: list[Document]) -> list[Document]:
         """Filters relevant documents."""
         compressed_documents = []
         for document in documents:
-            prompt = _PROMPT_TEMPLATE.format(question=query, context=document.page_content)
+            prompt = _PROMPT_TEMPLATE.format(question=user_text, context=document.page_content)
             output = self.llm.get_completion([{"role": "user", "content": prompt}])
             try:
                 include_doc = self._parse_output(output)
@@ -53,9 +52,9 @@ class ContextualCompressionRetriever(BaseModel):
                 compressed_documents.append(document)
         return compressed_documents
 
-    def get_relevant_documents(self, query: str) -> str:
+    def get_relevant_documents(self, user_text: str, fetch_k: int = 5) -> str:
         """Gets relevant documents."""
-        documents = self.vector_store.similarity_search(query, self.fetch_k, self.score_threshold)
+        documents = self.vector_store.similarity_search(user_text, fetch_k, self.score_threshold)
         documents = [document for document, _ in documents]
-        compressed_documents = self._compress_documents(query, documents)
-        return f"Context:\n\n{format_documents(compressed_documents)}"
+        compressed_documents = self._compress_documents(user_text, documents)
+        return format_documents(compressed_documents)

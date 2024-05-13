@@ -56,6 +56,6 @@ class ContextualCompressionRetriever(BaseModel):
     def get_relevant_documents(self, query: str) -> str:
         """Gets relevant documents."""
         documents = self.vector_store.similarity_search(query, self.fetch_k, self.score_threshold)
-        documents = [document for document, _, _ in documents]
+        documents = [document for document, _ in documents]
         compressed_documents = self._compress_documents(query, documents)
         return f"Context:\n\n{format_documents(compressed_documents)}"

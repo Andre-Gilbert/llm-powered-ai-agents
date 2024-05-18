@@ -38,6 +38,8 @@ class Tool(BaseModel):
 
     def invoke(self, tool_input: dict[str, Any]) -> Any:
         """Invokes a tool given arguments provided by an LLM."""
+        if self.args_schema is None:
+            return self.func()
         try:
             parsed_input = self._parse_input(tool_input)
             observation = self.func(**parsed_input) if parsed_input else self.func()

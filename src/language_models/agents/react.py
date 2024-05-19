@@ -30,8 +30,6 @@ _FORMAT_INSTRUCTIONS = """Respond to the user as helpfully and accurately as pos
 
 You have access to the following tools: {tools}
 
-Use a JSON blob to specify a thought, a tool by providing an tool key (tool name) and a tool_input key (tool input).
-
 Valid "tool" values: {tool_names}
 
 Always use the following JSON format:

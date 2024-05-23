@@ -3,6 +3,7 @@
 from langchain_core.documents import Document
 from pydantic import BaseModel
 
+from language_models.agents.react import ChatMessage, ChatMessageRole
 from language_models.models.llm import OpenAILanguageModel
 from language_models.retrievers.utils import format_documents
 from language_models.vector_stores.faiss import FAISSVectorStore
@@ -43,7 +44,7 @@ class ContextualCompressionRetriever(BaseModel):
         compressed_documents = []
         for document in documents:
             prompt = _PROMPT_TEMPLATE.format(question=user_text, context=document.page_content)
-            output = self.llm.get_completion([{"role": "user", "content": prompt}])
+            output = self.llm.get_completion([ChatMessage(role=ChatMessageRole.USER, content=prompt)])
             try:
                 include_doc = self._parse_output(output)
             except ValueError:

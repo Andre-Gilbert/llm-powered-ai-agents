@@ -135,13 +135,13 @@ def count(
 earthquake_tools = [
     Tool(
         func=query,
-        name="Query",
+        name="Query Earthquakes",
         description="Use this tool to search recent earthquakes.",
         args_schema=USGSEarthquakeAPI,
     ),
     Tool(
         func=count,
-        name="Count",
+        name="Count Earthquakes",
         description="Use this tool to count and aggregate recent earthquakes.",
         args_schema=USGSEarthquakeAPI,
     ),

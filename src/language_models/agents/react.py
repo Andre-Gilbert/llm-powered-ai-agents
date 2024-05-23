@@ -30,23 +30,21 @@ _FORMAT_INSTRUCTIONS = """Respond to the user as helpfully and accurately as pos
 
 You have access to the following tools: {tools}
 
-Valid "tool" values: {tool_names}
-
 Always use the following JSON format:
 {{
   "thought": "You should always think about what to do consider previous and subsequent steps",
-  "tool": "The tool to use",
-  "tool_input": "Valid key value pairs",
+  "tool": "The tool to use. Must be on of {tool_names}",
+  "tool_input": "Valid keyword arguments",
 }}
 
 Observation: tool result
-... (this Thought/Tool/Observation can repeat N times)
+... (this Thought/Tool/Tool Input/Observation can repeat N times)
 
 When you know the answer, use the following JSON format:
 {{
   "thought": "I now know what to respond",
   "tool": "Final Answer",
-  "tool_input": "Valid key value pairs",
+  "tool_input": "Valid keyword arguments",
 }}"""
 
 
@@ -131,9 +129,14 @@ class ReActAgent(BaseModel):
             response = json.loads(response, strict=False)
             response = LLMResponse.model_validate(response)
             observation = None
-        except json.decoder.JSONDecodeError as e:
+        except json.decoder.JSONDecodeError:
             response = None
-            observation = f"Your response format was incorrect. The error was: {e}"
+            observation = (
+                "Your response format was incorrect."
+                + " Always use the following JSON format:"
+                + ' {"thought": "You should always think about what to do consider previous and subsequent steps",'
+                + ' "tool": "The tool to use", "tool_input": "Valid key value pairs"}"'
+            )
         except ValidationError as e:
             response = None
             observation = f"Your response failed validation. The error was: {e}"
@@ -141,6 +144,7 @@ class ReActAgent(BaseModel):
 
     def invoke(self, prompt: dict[str, Any]) -> AgentResponse:
         """Runs the AI agent."""
+        previous_work = []
         prompt = self.task_prompt.format(**{variable: prompt.get(variable) for variable in self.task_prompt_variables})
         logging.info("Prompt:\n%s", prompt)
         self.chat_messages.append(ChatMessage(role=ChatMessageRole.USER, content=prompt))
@@ -153,6 +157,7 @@ class ReActAgent(BaseModel):
             response, observation = self._parse_response(response)
             if response is not None:
                 logging.info("Thought:\n%s", response.thought)
+                previous_work.append(f"Thought: {response.thought}")
                 chain_of_thought.append(LLMCoT(step=LLMCoTStep.THOUGHT, content=response.thought))
                 if response.tool == "Final Answer":
                     try:
@@ -160,6 +165,9 @@ class ReActAgent(BaseModel):
                         result = self.output_format.model_validate(response.tool_input)
                         final_answer = result.model_dump()
                         chain_of_thought.append(LLMCoT(step=LLMCoTStep.FINAL_ANSWER, content=final_answer))
+                        self.chat_messages.append(
+                            ChatMessage(role=ChatMessageRole.ASSISTANT, content=str(final_answer))
+                        )
                         return AgentResponse(
                             prompt=prompt,
                             final_answer=final_answer,
@@ -176,6 +184,8 @@ class ReActAgent(BaseModel):
                             tool_response = tool.invoke(response.tool_input)
                             observation = f"Tool response:\n{tool_response}"
                             logging.info(observation)
+                            previous_work.append(f"Tool: {tool.name}")
+                            previous_work.append(f"Tool Input: {response.tool_input}")
                             chain_of_thought.append(
                                 LLMCoT(
                                     step=LLMCoTStep.TOOL,
@@ -191,7 +201,8 @@ class ReActAgent(BaseModel):
                                 f"{response.tool} tool doesn't exist."
                                 f" Try one of these tools: {list(self.tools.keys())}"
                             )
-            self.chat_messages.append(ChatMessage(role=ChatMessageRole.ASSISTANT, content=observation))
+            previous_work.append(f"Observation: {observation}")
+            self.chat_messages[-1].content = prompt + "\n\nThis was your previous work:\n\n" + "\n".join(previous_work)
             iterations += 1
         return AgentResponse(
             prompt=prompt,
@@ -214,7 +225,7 @@ class ReActAgent(BaseModel):
         output_tool = Tool(
             func=lambda _: None,
             name="Final Answer",
-            description="Use this tool to answer the question.",
+            description="When you know the answer, use this tool.",
             args_schema=output_format,
         )
         tools = [output_tool] if tools is None else tools + [output_tool]

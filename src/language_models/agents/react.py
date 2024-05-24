@@ -135,7 +135,8 @@ class ReActAgent(BaseModel):
                 "Your response format was incorrect."
                 + " Always use the following JSON format:"
                 + ' {"thought": "You should always think about what to do consider previous and subsequent steps",'
-                + ' "tool": "The tool to use", "tool_input": "Valid key value pairs"}"'
+                + f' "tool": "The tool to use. Must be one of {self.tools.keys()}",'
+                + ' "tool_input": "Valid key value pairs"}'
             )
         except ValidationError as e:
             response = None

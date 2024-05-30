@@ -30,7 +30,7 @@ _FORMAT_INSTRUCTIONS = """Respond to the user as helpfully and accurately as pos
 
 You have access to the following tools: {tools}
 
-Always use the following JSON format:
+Please ALWAYS use the following JSON format:
 {{
   "thought": "You should always think about what to do consider previous and subsequent steps",
   "tool": "The tool to use. Must be on of {tool_names}",
@@ -40,7 +40,7 @@ Always use the following JSON format:
 Observation: tool result
 ... (this Thought/Tool/Tool Input/Observation can repeat N times)
 
-When you know the answer, use the following JSON format:
+When you know the answer, you MUST use the following JSON format:
 {{
   "thought": "I now know what to respond",
   "tool": "Final Answer",
@@ -133,10 +133,16 @@ class ReActAgent(BaseModel):
             response = None
             observation = (
                 "Your response format was incorrect."
-                + " Always use the following JSON format:"
-                + ' {"thought": "You should always think about what to do consider previous and subsequent steps",'
-                + f' "tool": "The tool to use. Must be one of {self.tools.keys()}",'
-                + ' "tool_input": "Valid key value pairs"}'
+                + "\n\nPlease ALWAYS use the following JSON format:"
+                + '\n{\n\t"thought": "You should always think about what to do consider previous and subsequent steps",'
+                + f'\n\t"tool": "The tool to use. Must be one of {list(self.tools.keys())}",'
+                + '\n\t"tool_input": "Valid keyword arguments"\n}'
+                + "\n\nObservation: tool result"
+                + "\n... (this Thought/Tool/Tool Input/Observation can repeat N times)"
+                + "\n\nWhen you know the answer, you MUST use the following JSON format:"
+                + '\n{\n\t"thought": "You should always think about what to do consider previous and subsequent steps",'
+                + '\n\t"tool": "Final Answer",'
+                + '\n\t"tool_input": "Valid keyword arguments"\n}'
             )
         except ValidationError as e:
             response = None

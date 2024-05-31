@@ -1,6 +1,6 @@
 # LLM-powered AI Agents
 
-In today's fast-paced AI world, there's a growing need for custom AI solutions. This repository focuses on helping people develop an intuition about Large Language Models (LLMs). Decisions about integrating RAG, adding tools, and choosing functionalities should match each use case's unique needs. That's why it's crucial for businesses to understand LLMs deeply. This repository aims to provide that understanding, giving insights into LLM capabilities, limitations, and how they work. By grasping these concepts, businesses can make smart choices when building AI solutions.
+In today's fast-paced world of AI, there is an increasing demand for custom AI solutions. This repository is dedicated to helping individuals develop an intuition about Large Language Models (LLMs). The decisions regarding the integration of RAG, addition of tools, and selection of functionalities should align with the unique requirements of each use case. Therefore, it is essential for businesses to have a deep understanding of LLMs. This repository aims to offer that understanding by providing insights into the capabilities, limitations, and functioning of LLMs. By grasping these concepts, businesses can make informed decisions when developing AI solutions.
 
 ## Table of Contents
 

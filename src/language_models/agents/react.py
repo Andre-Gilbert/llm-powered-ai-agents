@@ -134,15 +134,15 @@ class ReActAgent(BaseModel):
             observation = (
                 "Your response format was incorrect."
                 + "\n\nPlease ALWAYS use the following JSON format:"
-                + '\n{\n\t"thought": "You should always think about what to do consider previous and subsequent steps",'
-                + f'\n\t"tool": "The tool to use. Must be one of {list(self.tools.keys())}",'
-                + '\n\t"tool_input": "Valid keyword arguments"\n}'
+                + '\n{\n    "thought": "You should always think about what to do consider previous and subsequent steps",'
+                + f'\n    "tool": "The tool to use. Must be one of {list(self.tools.keys())}",'
+                + '\n    "tool_input": "Valid keyword arguments"\n}'
                 + "\n\nObservation: tool result"
                 + "\n... (this Thought/Tool/Tool Input/Observation can repeat N times)"
                 + "\n\nWhen you know the answer, you MUST use the following JSON format:"
-                + '\n{\n\t"thought": "You should always think about what to do consider previous and subsequent steps",'
-                + '\n\t"tool": "Final Answer",'
-                + '\n\t"tool_input": "Valid keyword arguments"\n}'
+                + '\n{\n    "thought": "You should always think about what to do consider previous and subsequent steps",'
+                + '\n    "tool": "Final Answer",'
+                + '\n    "tool_input": "Valid keyword arguments"\n}'
             )
         except ValidationError as e:
             response = None

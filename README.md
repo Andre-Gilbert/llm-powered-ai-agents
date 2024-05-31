@@ -2,6 +2,8 @@
 
 In today's fast-paced world of AI, there is an increasing demand for custom AI solutions. This repository is dedicated to helping individuals develop an intuition about Large Language Models (LLMs). The decisions regarding the integration of RAG, adding tools, and choosing functionalities ought to align with the unique requirements of each use case. Therefore, it is essential for businesses to have a deep understanding of LLMs. This repository aims to offer that understanding by providing insights into the capabilities, limitations, and functioning of LLMs. By grasping these concepts, businesses can make informed decisions when developing AI solutions.
 
+**Disclaimer:** This repository reflects my personal approach to understanding and leveraging Large Language Models (LLMs). It is by no means the only way to utilize LLMs effectively. My aim is to share insights and methods that have worked for me, but there are many other valid and effective strategies. I encourage you to explore various perspectives and find what best suits your needs and use cases.
+
 ## Table of Contents
 
 1. [Overview of AI Agents](/src/agents.ipynb)

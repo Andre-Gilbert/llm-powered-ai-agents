@@ -4,7 +4,7 @@ In today's fast-paced world of AI, there is an increasing demand for custom AI s
 
 **Disclaimer:** This repository reflects my personal approach to understanding and leveraging LLMs. It is by no means the only way to utilize LLMs effectively. My aim is to share insights and methods that have worked for me, but there are many other valid and effective strategies. I encourage you to explore various perspectives and find what best suits your needs and use cases.
 
-## Table of Contents
+## Table of contents
 
 1. [Overview of LLM-powered AI Agents](/src/agents.ipynb)
 2. [Overview of Retrieval Augmented Generation](/src/rag.ipynb)

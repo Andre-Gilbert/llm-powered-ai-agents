@@ -6,7 +6,7 @@ In today's fast-paced world of AI, there is an increasing demand for custom AI s
 
 ## Table of Contents
 
-1. [Overview of AI Agents](/src/agents.ipynb)
+1. [Overview of LLM-powered AI Agents](/src/agents.ipynb)
 2. [Overview of Retrieval Augmented Generation](/src/rag.ipynb)
 
 ## License

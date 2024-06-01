@@ -131,11 +131,12 @@ class ReActAgent(BaseModel):
             observation = None
         except json.decoder.JSONDecodeError:
             response = None
+            tool_names = ", ".join(list(self.tools.keys()))
             observation = (
                 "Your response format was incorrect."
                 + "\n\nPlease ALWAYS use the following JSON format:"
                 + '\n{\n  "thought": "You should always think about what to do consider previous and subsequent steps",'
-                + f'\n  "tool": "The tool to use. Must be one of {', '.join(list(self.tools.keys()))}",'
+                + f'\n  "tool": "The tool to use. Must be one of {tool_names}",'
                 + '\n  "tool_input": "Valid keyword arguments"\n}'
                 + "\n\nObservation: tool result"
                 + "\n... (this Thought/Tool/Tool Input/Observation can repeat N times)"
@@ -204,10 +205,8 @@ class ReActAgent(BaseModel):
                                 )
                             )
                         else:
-                            observation = (
-                                f"{response.tool} tool doesn't exist."
-                                f" Try one of these tools: {', '.join(list(self.tools.keys()))}"
-                            )
+                            tool_names = ", ".join(list(self.tools.keys()))
+                            observation = f"{response.tool} tool doesn't exist. Try one of these tools: {tool_names}"
             previous_work.append(f"Observation: {observation}")
             self.chat_messages[-1].content = prompt + "\n\nThis was your previous work:\n\n" + "\n".join(previous_work)
             iterations += 1

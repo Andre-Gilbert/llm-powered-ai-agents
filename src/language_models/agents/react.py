@@ -49,12 +49,6 @@ When you know the answer, you MUST use the following JSON format:
 }}"""
 
 
-def extract(response: dict, key: str) -> str | None:
-    """Gets the value to a key from a dict if it is not none and of length larger than 0."""
-    value = response.get(key)
-    return value if value is not None and len(value) > 0 else None
-
-
 def num_tokens_from_messages(messages: list[ChatMessage]) -> int:
     """Counts the number of tokens in the conversation history."""
     encoding = tiktoken.get_encoding("cl100k_base")
@@ -124,7 +118,7 @@ class ReActAgent(BaseModel):
             del self.chat_messages[1]
             num_tokens = num_tokens_from_messages(self.chat_messages)
 
-    def _parse_response(self, response: str) -> tuple[LLMResponse | None, str]:
+    def _parse_response(self, response: str) -> tuple:
         """Parses the LLM response."""
         try:
             response = json.loads(response, strict=False)

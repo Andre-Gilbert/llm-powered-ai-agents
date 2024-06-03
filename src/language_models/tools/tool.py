@@ -23,7 +23,7 @@ class Tool(BaseModel):
     def __str__(self) -> str:
         args = self.args
         return (
-            f"tool name: {self.name}, "
+            f"- tool name: {self.name}, "
             f"tool description: {self.description}, "
             f"tool input: {re.sub('}', '}}', re.sub('{', '{{', str(args)))}"
         )

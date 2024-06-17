@@ -129,12 +129,11 @@ class ReActAgent(BaseModel):
             tool_names = ", ".join(list(self.tools.keys()))
             observation = (
                 "Your response format was incorrect."
+                + " Look at the JSON format below and correct your answer."
                 + "\n\nPlease ALWAYS use the following JSON format:"
                 + '\n{\n  "thought": "Explain your thought. Consider previous and subsequent steps",'
                 + f'\n  "tool": "The tool to use. Must be one of {tool_names}",'
                 + '\n  "tool_input": "Valid keyword arguments (e.g. {"key": value})"\n}'
-                + "\n\nObservation: tool result"
-                + "\n... (this Thought/Tool/Tool input/Observation can repeat N times)"
                 + "\n\nWhen you know the answer, you MUST use the following JSON format:"
                 + '\n{\n  "thought": "Explain the reason of your final answer when you know what to respond",'
                 + '\n  "tool": "Final Answer",'

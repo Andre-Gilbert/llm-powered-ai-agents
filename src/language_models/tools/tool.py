@@ -1,5 +1,6 @@
 """LLM tool."""
 
+import re
 from typing import Any, Callable, Type
 
 from pydantic import BaseModel, ValidationError
@@ -24,8 +25,7 @@ class Tool(BaseModel):
         return (
             f"- tool name: {self.name}, "
             f"tool description: {self.description}, "
-            # f"tool input: {re.sub('}', '}}', re.sub('{', '{{', str(args)))}"
-            f"tool input: {args}"
+            f"tool input: {re.sub('}', '}}', re.sub('{', '{{', str(args)))}"
         )
 
     def _parse_input(self, tool_input: dict[str, Any]) -> dict[str, Any]:

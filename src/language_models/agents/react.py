@@ -33,7 +33,7 @@ You have access to the following tools:
 
 Please ALWAYS use the following JSON format:
 {{
-  "thought": "You should always think about what to do consider previous and subsequent steps",
+  "thought": "Explain your thought. Consider previous and subsequent steps",
   "tool": "The tool to use. Must be on of {tool_names}",
   "tool_input": "Valid keyword arguments (e.g. {{"key": value}})",
 }}
@@ -43,7 +43,7 @@ Observation: tool result
 
 When you know the answer, you MUST use the following JSON format:
 {{
-  "thought": "I now know what to respond",
+  "thought": "Explain the reason of your final answer when you know what to respond",
   "tool": "Final Answer",
   "tool_input": "Valid keyword arguments (e.g. {{"key": value}})",
 }}"""
@@ -130,13 +130,13 @@ class ReActAgent(BaseModel):
             observation = (
                 "Your response format was incorrect."
                 + "\n\nPlease ALWAYS use the following JSON format:"
-                + '\n{\n  "thought": "You should always think about what to do consider previous and subsequent steps",'
+                + '\n{\n  "thought": "Explain your thought. Consider previous and subsequent steps",'
                 + f'\n  "tool": "The tool to use. Must be one of {tool_names}",'
                 + '\n  "tool_input": "Valid keyword arguments (e.g. {"key": value})"\n}'
                 + "\n\nObservation: tool result"
                 + "\n... (this Thought/Tool/Tool input/Observation can repeat N times)"
                 + "\n\nWhen you know the answer, you MUST use the following JSON format:"
-                + '\n{\n  "thought": "You should always think about what to do consider previous and subsequent steps",'
+                + '\n{\n  "thought": "Explain the reason of your final answer when you know what to respond",'
                 + '\n  "tool": "Final Answer",'
                 + '\n  "tool_input": "Valid keyword arguments (e.g. {"key": value})"\n}'
             )

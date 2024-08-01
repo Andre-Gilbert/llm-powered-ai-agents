@@ -8,7 +8,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from language_models.agents.react import ReActAgent
+from language_models.agent.react import ReActAgent
 from language_models.tools.tool import Tool
 
 
@@ -35,6 +35,25 @@ class AgentChainResponse(BaseModel):
     prompt: dict[str, Any]
     final_answer: dict[str, Any] | None
     execution_steps: list
+
+
+class ChainGlobalState(BaseModel):
+    state: dict[str, Any]
+
+
+class ChainStep(BaseModel):
+    output_field: str
+
+
+class Chain(BaseModel):
+    steps: list[ChainStep]
+    state: ChainGlobalState
+
+    def invoke(self):
+        pass
+
+    def as_tool(self) -> Tool:
+        pass
 
 
 class AgentChain(BaseModel):

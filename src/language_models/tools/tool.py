@@ -1,6 +1,5 @@
 """LLM tool."""
 
-import re
 from typing import Any, Callable, Type
 
 from pydantic import BaseModel, ValidationError
@@ -21,12 +20,7 @@ class Tool(BaseModel):
         return self.args_schema.model_json_schema()["properties"]
 
     def __str__(self) -> str:
-        args = self.args
-        return (
-            f"- tool name: {self.name}, "
-            f"tool description: {self.description}, "
-            f"tool input: {re.sub('}', '}}', re.sub('{', '{{', str(args)))}"
-        )
+        return f"- Tool Name: {self.name}, " f"Tool Description: {self.description}, " f"Tool Input: {self.args}"
 
     def _parse_input(self, tool_input: dict[str, Any]) -> dict[str, Any]:
         """Converts tool input to pydantic model."""
@@ -38,11 +32,14 @@ class Tool(BaseModel):
 
     def invoke(self, tool_input: dict[str, Any]) -> Any:
         """Invokes a tool given arguments provided by an LLM."""
-        if self.args_schema is None:
-            return self.func()
         try:
             parsed_input = self._parse_input(tool_input)
             observation = self.func(**parsed_input) if parsed_input else self.func()
-        except ValidationError as e:
-            observation = f"{self.name} tool input validation error: {e}"
+        except ValidationError:
+            observation = (
+                f"Could not run tool {self.name} with input: {tool_input}\n\n"
+                + "Your goal is to correct your response\n\n"
+                + "Your <input of the tool to use> must be a JSON format with the "
+                + f"keyword arguments of: {self.args}"
+            )
         return observation

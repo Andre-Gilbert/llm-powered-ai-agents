@@ -95,11 +95,20 @@ class LLMToolUse(BaseModel):
 class LLMFinalAnswer(BaseModel):
     thought: str
     final_answer: (
-        str | int | float | dict | BaseModel | list[str] | list[int] | list[float] | list[dict] | list[BaseModel]
+        str
+        | int
+        | float
+        | dict[str, Any]
+        | BaseModel
+        | list[str]
+        | list[int]
+        | list[float]
+        | list[dict[str, Any]]
+        | list[BaseModel]
     )
 
 
-class ReActOutputParser(BaseModel):
+class AgentOutputParser(BaseModel):
     """Class that parses the LLM output."""
 
     output_type: OutputType
@@ -131,13 +140,13 @@ class ReActOutputParser(BaseModel):
 
         return match.group()
 
-    def _tool_input_parser(self, json_str: str) -> dict:
+    def _tool_input_parser(self, json_str: str) -> dict[str, Any]:
         processed_string = re.sub(r"(?<!\w)\'|\'(?!\w)", '"', json_str)
         pattern = r'"(\w+)":\s*"([^"]*)"'
         matches = re.findall(pattern, processed_string)
         return dict(matches)
 
-    def _parse_tool(self, output: str) -> tuple[str, str, dict]:
+    def _parse_tool(self, output: str) -> tuple[str, str, dict[str, Any]]:
         thought, tool, tool_input = self._extract_tool_use(output)
         json_str = self._extract_json_str(tool_input)
         try:
@@ -148,7 +157,18 @@ class ReActOutputParser(BaseModel):
 
     def _validate_final_answer(
         self, final_answer: str
-    ) -> str | int | float | dict | BaseModel | list[str] | list[int] | list[float] | list[dict] | list[BaseModel]:
+    ) -> (
+        str
+        | int
+        | float
+        | dict[str, Any]
+        | BaseModel
+        | list[str]
+        | list[int]
+        | list[float]
+        | list[dict[str, Any]]
+        | list[BaseModel]
+    ):
         if self.output_type == OutputType.STRING:
             return final_answer
 
@@ -312,7 +332,19 @@ class ReActOutputParser(BaseModel):
                     + f"{OUTPUT_TYPE_ARRAY_OBJECT_OR_STRUCT.format(output_schema=args)}"
                 ) from error
 
-    def _parse_final_answer(self, output: str) -> tuple[str, Any]:
+    def _parse_final_answer(self, output: str) -> tuple[
+        str,
+        str
+        | int
+        | float
+        | dict[str, Any]
+        | BaseModel
+        | list[str]
+        | list[int]
+        | list[float]
+        | list[dict[str, Any]]
+        | list[BaseModel],
+    ]:
         pattern = r"\s*Thought: (.*?)\n+Final Answer:([\s\S]*.*?)(?:$)"
 
         match = re.search(pattern, output, re.DOTALL)

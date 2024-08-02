@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import logging
+from enum import Enum
 from typing import Any
 
 import tiktoken
-from pydantic import BaseModel
+from pydantic import BaseModel, create_model
 
 from language_models.agent.chat import (
     Chat,
@@ -16,10 +17,10 @@ from language_models.agent.chat import (
 )
 from language_models.agent.output_parser import (
     FINAL_ANSWER_INSTRUCTIONS,
+    AgentOutputParser,
     LLMFinalAnswer,
     LLMToolUse,
     OutputType,
-    ReActOutputParser,
 )
 from language_models.agent.prompt import (
     INSTRUCTIONS_WITH_TOOLS,
@@ -57,23 +58,41 @@ def num_tokens_from_messages(messages: list[ChatMessage]) -> int:
     return num_tokens
 
 
-class AgentResponse(BaseModel):
+class PromptingStrategy(str, Enum):
+    SINGLE_COMPLETION = "single-completion"
+    CHAIN_OF_THOUGHT = "chain-of-thought"
+
+
+class AgentOutput(BaseModel):
+    """Class that represents the agent output."""
+
     prompt: str
     final_answer: (
-        str | int | float | dict | BaseModel | list[str] | list[int] | list[float] | list[dict] | list[BaseModel] | None
+        str
+        | int
+        | float
+        | dict[str, Any]
+        | BaseModel
+        | list[str]
+        | list[int]
+        | list[float]
+        | list[dict[str, Any]]
+        | list[BaseModel]
+        | None
     )
     chain_of_thought: list[ReasoningStep]
 
 
-class ReActAgent(BaseModel):
+class Agent(BaseModel):
     """Class that implements a ReAct agent."""
 
     llm: OpenAILanguageModel
     tools: dict[str, Tool] | None
     prompt: str
     prompt_variables: list[str]
-    output_parser: ReActOutputParser
+    output_parser: AgentOutputParser
     chat: Chat
+    prompting_strategy: PromptingStrategy
     iterations: int = 10
 
     def _trim_conversation(self) -> None:
@@ -96,7 +115,7 @@ class ReActAgent(BaseModel):
             observation = error
         return output, observation
 
-    def invoke(self, prompt: dict[str, Any]) -> AgentResponse:
+    def invoke(self, prompt: dict[str, Any]) -> AgentOutput:
         """Runs the agent given a prompt."""
         prompt = self.prompt.format(**{variable: prompt.get(variable) for variable in self.prompt_variables})
 
@@ -125,7 +144,7 @@ class ReActAgent(BaseModel):
                     self.chat.messages.append(
                         ChatMessage(role=ChatMessageRole.ASSISTANT, content=str(output.final_answer))
                     )
-                    return AgentResponse(
+                    return AgentOutput(
                         prompt=prompt,
                         final_answer=output.final_answer,
                         chain_of_thought=self.chat.chain_of_thought,
@@ -160,14 +179,19 @@ class ReActAgent(BaseModel):
             self.chat.update(prompt)
             iteration += 1
 
-        if self.output_parser.output_format in (OutputType.OBJECT, OutputType.STRUCT):
+        if self.output_parser.output_type == OutputType.STRUCT:
             final_answer = {key: None for key in self.output_parser.object_schema.model_json_schema()["properties"]}
-        elif self.output_parser.output_format in (OutputType.ARRAY_OBJECT, OutputType.ARRAY_STRUCT):
+        elif self.output_parser.output_type == OutputType.ARRAY_STRUCT:
             final_answer = [{key: None for key in self.output_parser.object_schema.model_json_schema()["properties"]}]
+        elif self.output_parser.output_type in (OutputType.OBJECT, OutputType.ARRAY_OBJECT):
+            fields = self.output_parser.output_schema.__annotations__
+            optional_fields = {field: (data_type | None, None) for field, data_type in fields.items()}
+            model = create_model(self.output_parser.output_schema.__name__, **optional_fields)
+            final_answer = model() if self.output_parser.output_type == OutputType.OBJECT else [model()]
         else:
             final_answer = None
 
-        return AgentResponse(
+        return AgentOutput(
             prompt=prompt,
             final_answer=final_answer,
             chain_of_thought=self.chat.chain_of_thought,
@@ -183,8 +207,9 @@ class ReActAgent(BaseModel):
         output_type: OutputType,
         output_schema: type[BaseModel] | str | None = None,
         tools: list[Tool] | None = None,
+        prompting_strategy: PromptingStrategy = PromptingStrategy.CHAIN_OF_THOUGHT,
         iterations: int = 10,
-    ) -> ReActAgent:
+    ) -> Agent:
         """Creates an instance of the ReAct agent."""
         if tools is None:
             instructions = INSTRUCTIONS_WITHOUT_TOOLS
@@ -195,11 +220,9 @@ class ReActAgent(BaseModel):
             tool_use = True
             tools = {tool.name: tool for tool in tools}
 
-        if output_type in (OutputType.OBJECT, OutputType.ARRAY_OBJECT):
+        if output_type in (OutputType.OBJECT, OutputType.ARRAY_OBJECT, OutputType.DATE, OutputType.TIMESTAMP):
             if output_schema is None:
-                raise ValueError(
-                    "When using object or list object as the output format a schema of the object must be provided."
-                )
+                raise ValueError(f"When using {output_type} as the output type a schema must be provided.")
 
             args = output_schema.model_json_schema()["properties"]
             final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[output_type].format(output_schema=args)
@@ -215,14 +238,15 @@ class ReActAgent(BaseModel):
             ]
         )
 
-        output_parser = ReActOutputParser(output_type=output_type, output_schema=output_schema, tool_use=tool_use)
+        output_parser = AgentOutputParser(output_type=output_type, output_schema=output_schema, tool_use=tool_use)
 
-        return ReActAgent(
+        return Agent(
             llm=llm,
             tools=tools,
             prompt=prompt,
             prompt_variables=prompt_variables,
             output_parser=output_parser,
             chat=chat,
+            prompting_strategy=prompting_strategy,
             iterations=iterations,
         )

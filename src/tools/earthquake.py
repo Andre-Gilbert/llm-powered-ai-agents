@@ -57,10 +57,6 @@ class USGeopoliticalSurveyEarthquakeAPI(BaseModel):
             + ' alert_level=red Limit to events with PAGER alert level "red".'
         ),
     )
-    eventtype: str = Field(
-        None,
-        description="Limit to events of a specific type. NOTE: “earthquake” will filter non-earthquake events.",
-    )
 
 
 def query_earthquakes(

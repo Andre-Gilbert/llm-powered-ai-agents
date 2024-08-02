@@ -3,7 +3,7 @@
 from langchain_core.documents import Document
 from pydantic import BaseModel
 
-from language_models.agents.react import ChatMessage, ChatMessageRole
+from language_models.agent.react import ChatMessage, ChatMessageRole
 from language_models.models.llm import OpenAILanguageModel
 from language_models.retrievers.utils import format_documents
 from language_models.vector_stores.faiss import FAISSVectorStore

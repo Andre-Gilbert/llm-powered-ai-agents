@@ -1,6 +1,6 @@
 """LLM tool."""
 
-from typing import Any, Callable, Type
+from typing import Any, Callable
 
 from pydantic import BaseModel, ValidationError
 
@@ -8,13 +8,13 @@ from pydantic import BaseModel, ValidationError
 class Tool(BaseModel):
     """Class that implements an LLM tool."""
 
-    func: Callable[[Any], Any]
+    function: Callable[[Any], Any]
     name: str
     description: str
-    args_schema: Type[BaseModel] | None = None
+    args_schema: type[BaseModel] | None = None
 
     @property
-    def args(self) -> dict | None:
+    def args(self) -> dict[str, Any] | None:
         if self.args_schema is None:
             return
         return self.args_schema.model_json_schema()["properties"]
@@ -34,7 +34,7 @@ class Tool(BaseModel):
         """Invokes a tool given arguments provided by an LLM."""
         try:
             parsed_input = self._parse_input(tool_input)
-            observation = self.func(**parsed_input) if parsed_input else self.func()
+            observation = self.function(**parsed_input) if parsed_input else self.function()
         except ValidationError:
             observation = (
                 f"Could not run tool {self.name} with input: {tool_input}\n\n"

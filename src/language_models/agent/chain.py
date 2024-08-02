@@ -4,49 +4,133 @@ from __future__ import annotations
 
 import logging
 from enum import Enum
-from typing import Any
+from typing import Any, Callable
 
-from pydantic import BaseModel, create_model
+from pydantic import BaseModel
 
-from language_models.agent.react import ReActAgent
+from language_models.agent.agent import Agent
+from language_models.agent.chat import (
+    ReasoningStep,
+    ReasoningStepName,
+    ReasoningStepTool,
+)
 from language_models.tools.tool import Tool
 
 
-class ChainExecutionStep(str, Enum):
+class ChainBlockStepName(str, Enum):
     AGENT = "agent"
     TOOL = "tool"
+    FILTER = "filter"
 
 
-class ChainExecutionTool(BaseModel):
+class ChainBlockOutput(BaseModel):
+    """Class that represents the output of a block."""
+
+    inputs: dict[str, Any]
+    output: (
+        str
+        | int
+        | float
+        | dict[str, Any]
+        | BaseModel
+        | list[str]
+        | list[int]
+        | list[float]
+        | list[dict[str, Any]]
+        | list[BaseModel]
+        | None
+    )
+    steps: list[ReasoningStep]
+
+
+class ChainToolBlock(BaseModel):
+    """Class that implements a tool or function block."""
+
+    function: Callable[[Any], Any]
     name: str
-    args: dict | None
-    response: Any
+    inputs: type[BaseModel] | None = None
+
+    def invoke(self, inputs: dict[str, Any]) -> ChainBlockOutput:
+        inputs = {key: value for key, value in inputs.items() if key in self.inputs.model_fields}
+        inputs = self.inputs.model_validate(inputs)
+        output = self.function(**inputs)
+        return ChainBlockOutput(
+            inputs=inputs.model_dump(),
+            output=output,
+            steps=ReasoningStep(
+                name=ReasoningStepName.TOOL,
+                content=ReasoningStepTool(tool=self.name, tool_input=inputs.model_dump(), tool_response=output),
+            ),
+        )
 
 
-class ChainExecution(BaseModel):
-    step: ChainExecutionStep
-    content: list[dict[str, Any]] | ChainExecutionTool
+class ChainAgentBlock(BaseModel):
+    """Class that implements an agent block."""
+
+    name: str
+    agent: Agent
+
+    def invoke(self, inputs: dict[str, Any]) -> ChainBlockOutput:
+        output = self.agent.invoke(inputs)
+        return ChainBlockOutput(inputs=inputs, output=output.final_answer, steps=output.chain_of_thought)
+
+
+class ChainFilterBlock(BaseModel):
+    name: str
+    inputs: type[BaseModel]
+
+    def invoke(self, inputs: dict[str, Any]) -> ChainBlockOutput:
+        return ChainBlockOutput
+
+
+class ChainBlockStep(BaseModel):
+    name: ChainBlockStepName
+    content: ChainBlockOutput
 
     class Config:
         use_enum_values = True
 
 
-class AgentChainResponse(BaseModel):
-    prompt: dict[str, Any]
-    final_answer: dict[str, Any] | None
-    execution_steps: list
+class ChainStateManager(BaseModel):
+    """Class that implements a state manager."""
 
-
-class ChainInput(BaseModel):
-    pass
-
-
-class ChainState(BaseModel):
     state: dict[str, Any]
+    steps: list[ChainBlockStep] = []
+
+    def update(
+        self,
+        block: ChainAgentBlock | ChainToolBlock | ChainFilterBlock,
+        output: Any,
+    ) -> None:
+        """Updates the state values."""
+        self.state[block.name] = output.output
+        if isinstance(block, ChainAgentBlock):
+            block_step_name = ChainBlockStepName.AGENT
+        elif isinstance(block, ChainToolBlock):
+            block_step_name = ChainBlockStepName.TOOL
+        else:
+            block_step_name = ChainBlockStepName.FILTER
+        self.steps.append(ChainBlockStep(name=block_step_name, content=output))
 
 
-class ChainStep(BaseModel):
-    output: str
+class ChainOutput(BaseModel):
+    """Class that represents the chain output."""
+
+    inputs: dict[str, Any]
+    output: (
+        str
+        | int
+        | float
+        | dict[str, Any]
+        | BaseModel
+        | list[str]
+        | list[int]
+        | list[float]
+        | list[dict[str, Any]]
+        | list[BaseModel]
+        | None
+    )
+    steps: list[ChainBlockStep]
 
 
 class Chain(BaseModel):
@@ -56,73 +140,27 @@ class Chain(BaseModel):
     description: str
     inputs: type[BaseModel]
     output: str
-    steps: list[ChainStep]
-    state: ChainState
+    blocks: list[ChainAgentBlock | ChainToolBlock | ChainFilterBlock]
 
-    def invoke(self):
-        pass
+    def invoke(self, **inputs: dict[str, Any]) -> ChainOutput:
+        inputs = self.inputs.model_validate(inputs)
+        state_manager = ChainStateManager(state=inputs.model_dump())
 
-    def as_tool(self) -> Tool:
-        args_schema = create_model(self.name)
-        return Tool(
-            func=self.invoke,
-            name=self.name,
-            description=self.description,
-            args_schema=args_schema,
+        for block in self.blocks:
+            logging.info("Running Block: %s", block.name)
+            output = block.invoke(state_manager.state)
+            state_manager.update(block, output)
+
+        return ChainOutput(
+            inputs=inputs.model_dump(),
+            output=state_manager.state.get(self.output),
+            steps=state_manager.steps,
         )
 
-
-class AgentChain(BaseModel):
-    """Class that implements LLM chaining."""
-
-    chain: list[ReActAgent | Tool]
-    chain_variables: list[str]
-
-    def invoke(self, prompt: dict[str, Any]) -> AgentChainResponse:
-        execution_steps: list[ChainExecution] = []
-        for i, block in enumerate(self.chain):
-            if isinstance(block, ReActAgent):
-                response = block.invoke(prompt)
-                prompt = {**prompt, **response.final_answer}
-                execution_steps.append(
-                    ChainExecution(
-                        step=ChainExecutionStep.AGENT,
-                        content=response.chain_of_thought,
-                    )
-                )
-                if i == len(self.chain) - 1:
-                    return AgentChainResponse(
-                        prompt=prompt,
-                        final_answer=response.final_answer,
-                        execution_steps=execution_steps,
-                    )
-            else:
-                logging.info("Running code block:\n%s", block.name)
-                response = block.invoke(prompt)
-                prompt[block.name] = response
-                execution_steps.append(
-                    ChainExecution(
-                        step=ChainExecutionStep.TOOL,
-                        content=ChainExecutionTool(
-                            name=block.name,
-                            args=(
-                                None
-                                if block.args is None
-                                else {key: prompt.get(key) for key in prompt if key in block.args}
-                            ),
-                            response=response,
-                        ),
-                    )
-                )
-                if i == len(self.chain) - 1:
-                    logging.info("Code block output:\n%s", response)
-                    return AgentChainResponse(
-                        prompt=prompt,
-                        final_answer={block.name: response},
-                        execution_steps=execution_steps,
-                    )
-        return AgentChainResponse(
-            prompt=prompt,
-            final_answer=None,
-            execution_steps=execution_steps,
+    def as_tool(self) -> Tool:
+        return Tool(
+            function=self.invoke,
+            name=self.name,
+            description=self.description,
+            args_schema=self.inputs,
         )

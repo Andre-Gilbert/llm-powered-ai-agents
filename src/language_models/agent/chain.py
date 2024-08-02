@@ -28,17 +28,7 @@ class ChainBlockOutput(BaseModel):
 
     inputs: dict[str, Any]
     output: (
-        str
-        | int
-        | float
-        | dict[str, Any]
-        | BaseModel
-        | list[str]
-        | list[int]
-        | list[float]
-        | list[dict[str, Any]]
-        | list[BaseModel]
-        | None
+        str | int | float | dict | BaseModel | list[str] | list[int] | list[float] | list[dict] | list[BaseModel] | None
     )
     steps: list[ReasoningStep]
 
@@ -52,15 +42,19 @@ class ChainToolBlock(BaseModel):
 
     def invoke(self, inputs: dict[str, Any]) -> ChainBlockOutput:
         inputs = {key: value for key, value in inputs.items() if key in self.inputs.model_fields}
-        inputs = self.inputs.model_validate(inputs)
+        inputs = self.inputs.model_validate(inputs).model_dump()
+        logging.info("Tool: \n%s", self.name)
+        logging.info("Tool Input: \n%s", inputs)
         output = self.function(**inputs)
         return ChainBlockOutput(
-            inputs=inputs.model_dump(),
+            inputs=inputs,
             output=output,
-            steps=ReasoningStep(
-                name=ReasoningStepName.TOOL,
-                content=ReasoningStepTool(tool=self.name, tool_input=inputs.model_dump(), tool_response=output),
-            ),
+            steps=[
+                ReasoningStep(
+                    name=ReasoningStepName.TOOL,
+                    content=ReasoningStepTool(tool=self.name, tool_input=inputs, tool_response=output),
+                ),
+            ],
         )
 
 
@@ -100,7 +94,7 @@ class ChainStateManager(BaseModel):
     def update(
         self,
         block: ChainAgentBlock | ChainToolBlock | ChainFilterBlock,
-        output: Any,
+        output: ChainBlockOutput,
     ) -> None:
         """Updates the state values."""
         self.state[block.name] = output.output
@@ -142,7 +136,7 @@ class Chain(BaseModel):
     output: str
     blocks: list[ChainAgentBlock | ChainToolBlock | ChainFilterBlock]
 
-    def invoke(self, **inputs: dict[str, Any]) -> ChainOutput:
+    def invoke(self, inputs: dict[str, Any]) -> ChainOutput:
         inputs = self.inputs.model_validate(inputs)
         state_manager = ChainStateManager(state=inputs.model_dump())
 
@@ -158,8 +152,26 @@ class Chain(BaseModel):
         )
 
     def as_tool(self) -> Tool:
+
+        def function(
+            **inputs: dict[str, Any]
+        ) -> (
+            str
+            | int
+            | float
+            | dict[str, Any]
+            | BaseModel
+            | list[str]
+            | list[int]
+            | list[float]
+            | list[dict[str, Any]]
+            | list[BaseModel]
+            | None
+        ):
+            return self.invoke(inputs).output
+
         return Tool(
-            function=self.invoke,
+            function=function,
             name=self.name,
             description=self.description,
             args_schema=self.inputs,

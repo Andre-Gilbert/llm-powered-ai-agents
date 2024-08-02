@@ -21,6 +21,7 @@ from language_models.agent.output_parser import (
     LLMFinalAnswer,
     LLMToolUse,
     OutputType,
+    get_example_from_schema,
 )
 from language_models.agent.prompt import (
     INSTRUCTIONS_WITH_TOOLS,
@@ -191,6 +192,7 @@ class Agent(BaseModel):
         else:
             final_answer = None
 
+        logging.info("Final Answer:\n%s", final_answer)
         return AgentOutput(
             prompt=prompt,
             final_answer=final_answer,
@@ -220,12 +222,16 @@ class Agent(BaseModel):
             tool_use = True
             tools = {tool.name: tool for tool in tools}
 
-        if output_type in (OutputType.OBJECT, OutputType.ARRAY_OBJECT, OutputType.DATE, OutputType.TIMESTAMP):
+        if output_type in (OutputType.OBJECT, OutputType.ARRAY_OBJECT):
             if output_schema is None:
                 raise ValueError(f"When using {output_type} as the output type a schema must be provided.")
 
             args = output_schema.model_json_schema()["properties"]
-            final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[output_type].format(output_schema=args)
+            final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[output_type].format(
+                output_schema=args, example=get_example_from_schema(args)
+            )
+        elif output_type in (OutputType.DATE, OutputType.TIMESTAMP):
+            final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[output_type].format(output_schema=output_schema)
         else:
             final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[output_type]
 

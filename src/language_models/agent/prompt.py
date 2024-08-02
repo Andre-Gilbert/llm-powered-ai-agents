@@ -64,7 +64,7 @@ Here is an example:
 ```
 Thought: Now that I have the information to answer the user's query, I will provide it in the specified format.
 
-Final Answer: {{'key': <value>}}
+Final Answer: {example}
 ```"""
 
 
@@ -92,8 +92,7 @@ Here is an example:
 ```
 Thought: Now that I have the information to answer the user's query, I will provide it in the specified format.
 
-Final Answer: {{'key': <value>}}
-```"""
+Final Answer: {example}"""
 
 
 OUTPUT_TYPE_BINARY = (

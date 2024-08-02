@@ -108,6 +108,39 @@ class LLMFinalAnswer(BaseModel):
     )
 
 
+def get_example_from_schema(args: dict[str, Any]) -> dict[str, Any]:
+    example = {}
+    for field, details in args.items():
+        field_type = details.get("type")
+        items_type = details.get("items", {}).get("type")
+        format_type = details.get("format")
+        if field_type == "string":
+            if format_type == "date":
+                example[field] = "2024-01-01"
+            elif format_type == "date-time":
+                example[field] = "2024-01-01T12:00:00Z"
+            else:
+                example[field] = "<value>"
+        elif field_type == "integer":
+            example[field] = 42
+        elif field_type == "number":
+            example[field] = 1.0
+        elif field_type == "boolean":
+            example[field] = False
+        elif field_type == "array":
+            if items_type == "string":
+                example[field] = ["<value>"]
+            elif items_type == "integer":
+                example[field] = [42]
+            elif items_type == "number":
+                example[field] = [1.0]
+            else:
+                example[field] = []
+        else:
+            example[field] = None
+    return example
+
+
 class AgentOutputParser(BaseModel):
     """Class that parses the LLM output."""
 
@@ -245,7 +278,7 @@ class AgentOutputParser(BaseModel):
                 raise ValueError(
                     f"You made a mistake in your final answer: {final_answer}\n\n"
                     + "Your goal is to correct your final answer\n\n"
-                    + f"{OUTPUT_TYPE_OBJECT_OR_STRUCT.format(output_schema=args)}"
+                    + f"{OUTPUT_TYPE_OBJECT_OR_STRUCT.format(output_schema=args, example=get_example_from_schema(args))}"
                 ) from error
 
         if self.output_type == OutputType.ARRAY_STRING:
@@ -329,7 +362,7 @@ class AgentOutputParser(BaseModel):
                 raise ValueError(
                     f"You made a mistake in your final answer: {final_answer}\n\n"
                     + "Your goal is to correct your final answer\n\n"
-                    + f"{OUTPUT_TYPE_ARRAY_OBJECT_OR_STRUCT.format(output_schema=args)}"
+                    + f"{OUTPUT_TYPE_ARRAY_OBJECT_OR_STRUCT.format(output_schema=args, example=get_example_from_schema(args))}"
                 ) from error
 
     def _parse_final_answer(self, output: str) -> tuple[

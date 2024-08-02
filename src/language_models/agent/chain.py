@@ -6,7 +6,7 @@ import logging
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, create_model
 
 from language_models.agent.react import ReActAgent
 from language_models.tools.tool import Tool
@@ -37,23 +37,39 @@ class AgentChainResponse(BaseModel):
     execution_steps: list
 
 
-class ChainGlobalState(BaseModel):
+class ChainInput(BaseModel):
+    pass
+
+
+class ChainState(BaseModel):
     state: dict[str, Any]
 
 
 class ChainStep(BaseModel):
-    output_field: str
+    output: str
 
 
 class Chain(BaseModel):
+    """Class that implements a chain."""
+
+    name: str
+    description: str
+    inputs: type[BaseModel]
+    output: str
     steps: list[ChainStep]
-    state: ChainGlobalState
+    state: ChainState
 
     def invoke(self):
         pass
 
     def as_tool(self) -> Tool:
-        pass
+        args_schema = create_model(self.name)
+        return Tool(
+            func=self.invoke,
+            name=self.name,
+            description=self.description,
+            args_schema=args_schema,
+        )
 
 
 class AgentChain(BaseModel):

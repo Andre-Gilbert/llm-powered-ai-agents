@@ -18,7 +18,7 @@ from language_models.agent.output_parser import (
     FINAL_ANSWER_INSTRUCTIONS,
     LLMFinalAnswer,
     LLMToolUse,
-    OutputFormat,
+    OutputType,
     ReActOutputParser,
 )
 from language_models.agent.prompt import (
@@ -59,7 +59,9 @@ def num_tokens_from_messages(messages: list[ChatMessage]) -> int:
 
 class AgentResponse(BaseModel):
     prompt: str
-    final_answer: str | int | float | dict | list[str] | list[int] | list[float] | list[dict] | None
+    final_answer: (
+        str | int | float | dict | BaseModel | list[str] | list[int] | list[float] | list[dict] | list[BaseModel] | None
+    )
     chain_of_thought: list[ReasoningStep]
 
 
@@ -158,10 +160,9 @@ class ReActAgent(BaseModel):
             self.chat.update(prompt)
             iteration += 1
 
-        if self.output_parser.output_format == OutputFormat.OBJECT:
+        if self.output_parser.output_format in (OutputType.OBJECT, OutputType.STRUCT):
             final_answer = {key: None for key in self.output_parser.object_schema.model_json_schema()["properties"]}
-
-        elif self.output_parser.output_format == OutputFormat.LIST_OBJECT:
+        elif self.output_parser.output_format in (OutputType.ARRAY_OBJECT, OutputType.ARRAY_STRUCT):
             final_answer = [{key: None for key in self.output_parser.object_schema.model_json_schema()["properties"]}]
         else:
             final_answer = None
@@ -179,8 +180,8 @@ class ReActAgent(BaseModel):
         system_prompt: str,
         prompt: str,
         prompt_variables: list[str],
-        output_format: OutputFormat,
-        object_schema: type[BaseModel] | None = None,
+        output_type: OutputType,
+        output_schema: type[BaseModel] | str | None = None,
         tools: list[Tool] | None = None,
         iterations: int = 10,
     ) -> ReActAgent:
@@ -194,16 +195,16 @@ class ReActAgent(BaseModel):
             tool_use = True
             tools = {tool.name: tool for tool in tools}
 
-        if output_format in (OutputFormat.OBJECT, OutputFormat.LIST_OBJECT):
-            if object_schema is None:
+        if output_type in (OutputType.OBJECT, OutputType.ARRAY_OBJECT):
+            if output_schema is None:
                 raise ValueError(
                     "When using object or list object as the output format a schema of the object must be provided."
                 )
 
-            args = object_schema.model_json_schema()
-            final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[output_format].format(object_schema=args)
+            args = output_schema.model_json_schema()["properties"]
+            final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[output_type].format(output_schema=args)
         else:
-            final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[output_format]
+            final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[output_type]
 
         chat = Chat(
             messages=[
@@ -214,7 +215,7 @@ class ReActAgent(BaseModel):
             ]
         )
 
-        output_parser = ReActOutputParser(output_format=output_format, object_schema=object_schema, tool_use=tool_use)
+        output_parser = ReActOutputParser(output_type=output_type, output_schema=output_schema, tool_use=tool_use)
 
         return ReActAgent(
             llm=llm,

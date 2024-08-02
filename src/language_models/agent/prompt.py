@@ -40,53 +40,53 @@ Final Answer: <response to the prompt>
 ```"""
 
 
-FINAL_ANSWER_STRING = (
+OUTPUT_TYPE_STRING = (
     """Your <response to the prompt> should be the final answer to the user's query and must be a string"""
 )
 
 
-FINAL_ANSWER_INTEGER = (
+OUTPUT_TYPE_INTEGER = (
     """Your <response to the prompt> should be the final answer to the user's query and must be an integer"""
 )
 
 
-FINAL_ANSWER_FLOAT = (
+OUTPUT_TYPE_FLOAT = (
     """Your <response to the prompt> should be the final answer to the user's query and must be a float"""
 )
 
 
-FINAL_ANSWER_LIST_STRING = (
+OUTPUT_TYPE_OBJECT_OR_STRUCT = """Your <response to the prompt> should be the final answer to the user's query and must be a JSON format
+
+Here are the properties of the Pydantic model JSON schema:
+{output_schema}
+
+Here is an example:
+```
+Thought: Now that I have the information to answer the user's query, I will provide it in the specified format.
+
+Final Answer: {{'key': <value>}}
+```"""
+
+
+OUTPUT_TYPE_ARRAY_STRING = (
     """Your <response to the prompt> should be the final answer to the user's query and must be a list of strings"""
 )
 
 
-FINAL_ANSWER_OBJECT = """Your <response to the prompt> should be the final answer to the user's query and must be a JSON format
-
-Here are the properties of the Pydantic model JSON schema:
-{object_schema}
-
-Here is an example:
-```
-Thought: Now that I have the information to answer the user's query, I will provide it in the specified format.
-
-Final Answer: {{'key': <value>}}
-```"""
-
-
-FINAL_ANSWER_LIST_INTEGER = (
+OUTPUT_TYPE_ARRAY_INTEGER = (
     """Your <response to the prompt> should be the final answer to the user's query and must be a list of integers"""
 )
 
 
-FINAL_ANSWER_LIST_FLOAT = (
+OUTPUT_TYPE_ARRAY_FLOAT = (
     """Your <response to the prompt> should be the final answer to the user's query and must be a list of floats"""
 )
 
 
-FINAL_ANSWER_LIST_OBJECT = """Your <response to the prompt> should be the final answer to the user's query and must be a list of JSON format
+OUTPUT_TYPE_ARRAY_OBJECT_OR_STRUCT = """Your <response to the prompt> should be the final answer to the user's query and must be a list of JSON format
 
 Here are the properties of the Pydantic model JSON schema:
-{object_schema}
+{output_schema}
 
 Here is an example:
 ```
@@ -94,3 +94,19 @@ Thought: Now that I have the information to answer the user's query, I will prov
 
 Final Answer: {{'key': <value>}}
 ```"""
+
+
+OUTPUT_TYPE_BINARY = (
+    """Your <response to the prompt> should be the final answer to the user's query and must be a binary"""
+)
+
+
+OUTPUT_TYPE_BOOLEAN = (
+    """Your <response to the prompt> should be the final answer to the user's query and must be a boolean"""
+)
+
+
+OUTPUT_TYPE_DATE = """Your <response to the prompt> should be the final answer to the user's query and must be a date with the format: {output_schema}"""
+
+
+OUTPUT_TYPE_TIMESTAMP = """Your <response to the prompt> should be the final answer to the user's query and must be a timestamp with the format: {output_schema}"""

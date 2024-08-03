@@ -21,7 +21,7 @@ In today's fast-paced world of AI, there is an increasing demand for custom AI s
 
 ### Modeling Approaches of Use Cases
 
-1. Chapter: []()
+1. Chapter: [LLMs integrating with Forecasting Models]()
 2. Chapter: []()
 3. Chapter: []()
 4. Chapter: []()

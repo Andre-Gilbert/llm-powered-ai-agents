@@ -1,12 +1,10 @@
 """OpenAI LLMs."""
 
-import time
 from enum import Enum
 
 from pydantic import BaseModel
 
-from language_models.proxy_client import BTPProxyClient
-from language_models.settings import settings
+from language_models.proxy_client import ProxyClient
 
 
 class ChatMessageRole(str, Enum):
@@ -26,7 +24,7 @@ class ChatMessage(BaseModel):
 class OpenAILanguageModel(BaseModel):
     """Class that implements the OpenAI models."""
 
-    proxy_client: BTPProxyClient
+    proxy_client: ProxyClient
     model: str
     max_tokens: int = 256
     temperature: float = 0.0

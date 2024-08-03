@@ -14,7 +14,7 @@ from tenacity import (
 from language_models.settings import settings
 
 
-class BTPProxyClient(BaseModel):
+class ProxyClient(BaseModel):
     """Class that implements the BTP proxy client."""
 
     client_id: str
@@ -38,9 +38,7 @@ class BTPProxyClient(BaseModel):
         self._access_token = response.get("access_token", None)
         if self._access_token is None:
             error = response.get("error", None)
-            raise ValueError(
-                f"Error while getting access token: url={self.auth_url}, exception={error}"
-            )
+            raise ValueError(f"Error while getting access token: url={self.auth_url}, exception={error}")
         expiry = int(response.get("expires_in", None))
         self._access_token_expiry = current_time + timedelta(seconds=expiry)
         self._headers["Authorization"] = f"Bearer {self._access_token}"
@@ -49,8 +47,7 @@ class BTPProxyClient(BaseModel):
         """Checks if the access token exists or has expired."""
         current_time = datetime.now(timezone.utc)
         return (self._access_token is None) or (
-            current_time - self._access_token_expiry
-            < timedelta(minutes=settings.API_ACCESS_TOKEN_EXPIRY_MINUTES)
+            current_time - self._access_token_expiry < timedelta(minutes=settings.API_ACCESS_TOKEN_EXPIRY_MINUTES)
         )
 
     @retry(

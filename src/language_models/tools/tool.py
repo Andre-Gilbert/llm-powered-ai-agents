@@ -36,18 +36,21 @@ class Tool(BaseModel):
 
     def invoke(self, tool_input: dict[str, Any]) -> Any:
         """Invokes a tool given arguments provided by an LLM."""
-        try:
-            parsed_input = self._parse_input(tool_input)
-            output = self.function(**parsed_input) if parsed_input else self.function()
-        except ValidationError as error:
-            output = "\n\n".join(
-                [
-                    f"Could not run tool {self.name} with input: {tool_input}",
-                    f"Here is the Pydantic validation error:\n{error}",
-                    "Your should correct your response",
-                    f"Your <input of the tool to use> must be a JSON format with the keyword arguments of: {self.args}",
-                ]
-            )
+        if self.args is None:
+            output = self.function()
+        else:
+            try:
+                parsed_input = self.parse_input(tool_input)
+                output = self.function(**parsed_input)
+            except ValidationError as error:
+                output = "\n\n".join(
+                    [
+                        f"Could not run tool {self.name} with input: {tool_input}",
+                        f"Here is the Pydantic validation error:\n{error}",
+                        "Your should correct your response",
+                        f"Your <input of the tool to use> must be a JSON format with the keyword arguments of: {self.args}",
+                    ]
+                )
         return output
 
     def __str__(self) -> str:

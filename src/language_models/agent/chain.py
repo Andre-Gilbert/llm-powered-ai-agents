@@ -52,7 +52,7 @@ class ChainToolBlock(BaseModel):
             steps=[
                 ReasoningStep(
                     name=ReasoningStepName.TOOL,
-                    content=ReasoningStepTool(tool=self.name, tool_input=inputs, tool_response=output),
+                    content=ReasoningStepTool(tool=self.name, tool_input=inputs, tool_output=output),
                 ),
             ],
         )

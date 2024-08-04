@@ -18,7 +18,7 @@ class ReasoningStepName(str, Enum):
 class ReasoningStepTool(BaseModel):
     tool: str
     tool_input: dict[str, Any]
-    tool_response: Any
+    tool_output: Any
 
 
 class ReasoningStep(BaseModel):

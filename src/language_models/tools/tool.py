@@ -6,23 +6,27 @@ from pydantic import BaseModel, ValidationError
 
 
 class Tool(BaseModel):
-    """Class that implements an LLM tool."""
+    """Class that implements a tool.
+
+    Attributes:
+        function: The function that will be invoked when calling this tool.
+        name: The name of the tool.
+        description: The description of when to use the tool or what the tool does.
+        args_schema: The Pydantic model that represents the input arguments.
+    """
 
     function: Callable[[Any], Any]
     name: str
     description: str
     args_schema: type[BaseModel] | None = None
 
-    @property
     def args(self) -> dict[str, Any] | None:
+        """Gets the tool model JSON schema."""
         if self.args_schema is None:
             return
         return self.args_schema.model_json_schema()["properties"]
 
-    def __str__(self) -> str:
-        return f"- Tool Name: {self.name}, " f"Tool Description: {self.description}, " f"Tool Input: {self.args}"
-
-    def _parse_input(self, tool_input: dict[str, Any]) -> dict[str, Any]:
+    def parse_input(self, tool_input: dict[str, Any]) -> dict[str, Any]:
         """Converts tool input to pydantic model."""
         input_args = self.args_schema
         if input_args is not None:
@@ -34,12 +38,17 @@ class Tool(BaseModel):
         """Invokes a tool given arguments provided by an LLM."""
         try:
             parsed_input = self._parse_input(tool_input)
-            observation = self.function(**parsed_input) if parsed_input else self.function()
-        except ValidationError:
-            observation = (
-                f"Could not run tool {self.name} with input: {tool_input}\n\n"
-                + "Your goal is to correct your response\n\n"
-                + "Your <input of the tool to use> must be a JSON format with the "
-                + f"keyword arguments of: {self.args}"
+            output = self.function(**parsed_input) if parsed_input else self.function()
+        except ValidationError as error:
+            output = "\n\n".join(
+                [
+                    f"Could not run tool {self.name} with input: {tool_input}",
+                    f"Here is the Pydantic validation error:\n{error}",
+                    "Your should correct your response",
+                    f"Your <input of the tool to use> must be a JSON format with the keyword arguments of: {self.args}",
+                ]
             )
-        return observation
+        return output
+
+    def __str__(self) -> str:
+        return f"- Tool Name: {self.name}, Tool Description: {self.description}, Tool Input: {self.args}"

@@ -158,8 +158,8 @@ class Agent(BaseModel):
                         tool = self.tools.get(output.tool)
 
                         if tool is not None:
-                            tool_response = tool.invoke(output.tool_input)
-                            observation = f"Tool Response:\n{tool_response}"
+                            tool_output = tool.invoke(output.tool_input)
+                            observation = f"Tool Output:\n{tool_output}"
                             logging.info(observation)
                             self.chat.steps.append(f"Tool: {tool.name}")
                             self.chat.steps.append(f"Tool Input: {output.tool_input}")
@@ -167,7 +167,7 @@ class Agent(BaseModel):
                                 ReasoningStep(
                                     name=ReasoningStepName.TOOL,
                                     content=ReasoningStepTool(
-                                        tool=output.tool, tool_input=output.tool_input, tool_response=tool_response
+                                        tool=output.tool, tool_input=output.tool_input, tool_output=tool_output
                                     ),
                                 )
                             )

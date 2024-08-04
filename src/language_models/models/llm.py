@@ -26,7 +26,7 @@ class OpenAILanguageModel(BaseModel):
 
     proxy_client: ProxyClient
     model: str
-    max_tokens: int = 256
+    max_tokens: int = 250
     temperature: float = 0.0
 
     def get_completion(self, messages: list[ChatMessage]) -> str:

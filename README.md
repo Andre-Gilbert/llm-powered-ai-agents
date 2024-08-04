@@ -10,8 +10,8 @@ In today's fast-paced world of AI, there is an increasing demand for custom AI s
 
 1. Chapter: [Large Language Model (LLM)](/src/llm.ipynb)
 2. Chapter: [Prompting](/src/prompting.ipynb)
-3. Chapter: [Structured Outputs](/src/structured_outputs.ipynb)
-4. Chapter: [Tools](/src/tools.ipynb)
+3. Chapter: [Tools](/src/tools.ipynb)
+4. Chapter: [Structured Outputs](/src/structured_outputs.ipynb)
 5. Chapter: [LLM-powered AI Agents](/src/ai_agents.ipynb)
 6. Chapter: [LLM-powered AI Agent Workflows](/src/ai_agent_workflows.ipynb)
 7. Chapter: [LLM-powered Multi-Agents](/src/multi_agents.ipynb)

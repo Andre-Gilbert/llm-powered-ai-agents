@@ -7,7 +7,7 @@ from enum import Enum
 from typing import Any
 
 import tiktoken
-from pydantic import BaseModel, create_model
+from pydantic import BaseModel, ValidationError, create_model
 
 from language_models.agent.chat import (
     Chat,
@@ -21,7 +21,7 @@ from language_models.agent.output_parser import (
     LLMFinalAnswer,
     LLMToolUse,
     OutputType,
-    get_example_from_schema,
+    get_schema_from_args,
 )
 from language_models.agent.prompt import (
     INSTRUCTIONS_WITH_TOOLS,
@@ -108,10 +108,7 @@ class Agent(BaseModel):
         try:
             output = self.output_parser.parse(output)
             observation = None
-        except ValueError as error:
-            output = None
-            observation = error
-        except TypeError as error:
+        except (ValueError, ValidationError) as error:
             output = None
             observation = error
         return output, observation
@@ -228,7 +225,7 @@ class Agent(BaseModel):
 
             args = output_schema.model_json_schema()["properties"]
             final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[output_type].format(
-                output_schema=args, example=get_example_from_schema(args)
+                output_schema=get_schema_from_args(args)
             )
         elif output_type in (OutputType.DATE, OutputType.TIMESTAMP):
             final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[output_type].format(output_schema=output_schema)

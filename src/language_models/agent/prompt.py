@@ -55,54 +55,33 @@ OUTPUT_TYPE_FLOAT = (
 )
 
 
-OUTPUT_TYPE_OBJECT_OR_STRUCT = """Your <response to the prompt> should be the final answer to the user's query and must be a JSON format
-
-Here are the properties of the Pydantic model JSON schema:
-{output_schema}
-
-Here is an example:
-```
-Thought: Now that I have the information to answer the user's query, I will provide it in the specified format.
-
-Final Answer: {example}
-```"""
+OUTPUT_TYPE_OBJECT_OR_STRUCT = """Your <response to the prompt> should be the final answer to the user's query and must be a JSON format with the keyword arguments: {output_schema}"""
 
 
 OUTPUT_TYPE_ARRAY_STRING = (
-    """Your <response to the prompt> should be the final answer to the user's query and must be a list of strings"""
+    """Your <response to the prompt> should be the final answer to the user's query and must be an array of strings"""
 )
 
 
 OUTPUT_TYPE_ARRAY_INTEGER = (
-    """Your <response to the prompt> should be the final answer to the user's query and must be a list of integers"""
+    """Your <response to the prompt> should be the final answer to the user's query and must be an array of integers"""
 )
 
 
 OUTPUT_TYPE_ARRAY_FLOAT = (
-    """Your <response to the prompt> should be the final answer to the user's query and must be a list of floats"""
+    """Your <response to the prompt> should be the final answer to the user's query and must be an array of floats"""
 )
 
 
-OUTPUT_TYPE_ARRAY_OBJECT_OR_STRUCT = """Your <response to the prompt> should be the final answer to the user's query and must be a list of JSON format
-
-Here are the properties of the Pydantic model JSON schema:
-{output_schema}
-
-Here is an example:
-```
-Thought: Now that I have the information to answer the user's query, I will provide it in the specified format.
-
-Final Answer: {example}"""
+OUTPUT_TYPE_ARRAY_OBJECT_OR_STRUCT = """Your <response to the prompt> should be the final answer to the user's query and must be an array of JSON format with the keyword arguments: {output_schema}"""
 
 
 OUTPUT_TYPE_BINARY = (
-    """Your <response to the prompt> should be the final answer to the user's query and must be a binary"""
+    """Your <response to the prompt> should be the final answer to the user's query and must be a binary string"""
 )
 
 
-OUTPUT_TYPE_BOOLEAN = (
-    """Your <response to the prompt> should be the final answer to the user's query and must be a boolean"""
-)
+OUTPUT_TYPE_BOOLEAN = """Your <response to the prompt> should be the final answer to the user's query and must be a boolean (true, false)"""
 
 
 OUTPUT_TYPE_DATE = """Your <response to the prompt> should be the final answer to the user's query and must be a date with the format: {output_schema}"""

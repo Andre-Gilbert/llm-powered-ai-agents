@@ -108,37 +108,46 @@ class LLMFinalAnswer(BaseModel):
     )
 
 
-def get_example_from_schema(args: dict[str, Any]) -> dict[str, Any]:
-    example = {}
+def get_schema_from_args(args: dict[str, Any]) -> dict[str, Any]:
+    schema = {}
     for field, details in args.items():
         field_type = details.get("type")
         items_type = details.get("items", {}).get("type")
-        format_type = details.get("format")
+        format_type = details.get("items", {}).get("format") or details.get("format")
         if field_type == "string":
             if format_type == "date":
-                example[field] = "2024-01-01"
+                schema[field] = "<date>"
             elif format_type == "date-time":
-                example[field] = "2024-01-01T12:00:00Z"
+                schema[field] = "<timestamp>"
+            elif format_type == "email":
+                schema[field] = "<email>"
             else:
-                example[field] = "<value>"
+                schema[field] = "<string>"
         elif field_type == "integer":
-            example[field] = 42
+            schema[field] = "<integer>"
         elif field_type == "number":
-            example[field] = 1.0
+            schema[field] = "<float>"
         elif field_type == "boolean":
-            example[field] = False
+            schema[field] = "<true or false>"
         elif field_type == "array":
             if items_type == "string":
-                example[field] = ["<value>"]
+                if format_type == "date":
+                    schema[field] = ["<date>"]
+                elif format_type == "date-time":
+                    schema[field] = ["<timestamp>"]
+                elif format_type == "email":
+                    schema[field] = ["<email>"]
+                else:
+                    schema[field] = ["<string>"]
             elif items_type == "integer":
-                example[field] = [42]
+                schema[field] = ["<integer>"]
             elif items_type == "number":
-                example[field] = [1.0]
+                schema[field] = ["<float>"]
             else:
-                example[field] = []
+                schema[field] = []
         else:
-            example[field] = None
-    return example
+            schema[field] = None
+    return schema
 
 
 class AgentOutputParser(BaseModel):
@@ -210,8 +219,14 @@ class AgentOutputParser(BaseModel):
                 return int(final_answer)
             except ValueError as error:
                 raise ValueError(
-                    f"You made a mistake in your final answer: {final_answer}\n\n"
-                    + f"Your goal is to correct your final answer\n\n{OUTPUT_TYPE_INTEGER}"
+                    "\n\n".join(
+                        [
+                            f"You made a mistake in your final answer:\n{final_answer}",
+                            f"The error was:\n{error}",
+                            "You need to correct your final answer",
+                            f"{OUTPUT_TYPE_INTEGER}",
+                        ]
+                    )
                 ) from error
 
         if self.output_type == OutputType.FLOAT:
@@ -219,8 +234,14 @@ class AgentOutputParser(BaseModel):
                 return float(final_answer)
             except ValueError as error:
                 raise ValueError(
-                    f"You made a mistake in your final answer: {final_answer}\n\n"
-                    + f"Your goal is to correct your final answer\n\n{OUTPUT_TYPE_FLOAT}"
+                    "\n\n".join(
+                        [
+                            f"You made a mistake in your final answer:\n{final_answer}",
+                            f"The error was:\n{error}",
+                            "You need to correct your final answer",
+                            f"{OUTPUT_TYPE_FLOAT}",
+                        ]
+                    )
                 ) from error
 
         if self.output_type == OutputType.BINARY:
@@ -228,17 +249,30 @@ class AgentOutputParser(BaseModel):
                 return final_answer
 
             raise ValueError(
-                f"You made a mistake in your final answer: {final_answer}\n\n"
-                + f"Your goal is to correct your final answer\n\n{OUTPUT_TYPE_BINARY}"
+                "\n\n".join(
+                    [
+                        f"You made a mistake in your final answer:\n{final_answer}",
+                        "The error was:\nCould not parse binary.",
+                        "You need to correct your final answer",
+                        f"{OUTPUT_TYPE_BINARY}",
+                    ]
+                )
             )
 
         if self.output_type == OutputType.BOOLEAN:
-            if isinstance(final_answer, bool):
-                return final_answer
-
+            if final_answer.lower() == "true":
+                return True
+            elif final_answer.lower() == "false":
+                return False
             raise ValueError(
-                f"You made a mistake in your final answer: {final_answer}\n\n"
-                + f"Your goal is to correct your final answer\n\n{OUTPUT_TYPE_BOOLEAN}"
+                "\n\n".join(
+                    [
+                        f"You made a mistake in your final answer:\n{final_answer}",
+                        "The error was:\nCould not parse boolean.",
+                        "You need to correct your final answer",
+                        f"{OUTPUT_TYPE_BOOLEAN}",
+                    ]
+                )
             )
 
         if self.output_type == OutputType.DATE:
@@ -246,9 +280,14 @@ class AgentOutputParser(BaseModel):
                 return datetime.strptime(final_answer, self.output_schema)
             except ValueError as error:
                 raise ValueError(
-                    f"You made a mistake in your final answer: {final_answer}\n\n"
-                    + "Your goal is to correct your final answer\n\n"
-                    + f"{OUTPUT_TYPE_DATE.format(output_schema=self.output_schema)}"
+                    "\n\n".join(
+                        [
+                            f"You made a mistake in your final answer:\n{final_answer}",
+                            f"The error was:\n{error}",
+                            "You need to correct your final answer",
+                            f"{OUTPUT_TYPE_DATE.format(self.output_schema)}",
+                        ]
+                    )
                 ) from error
 
         if self.output_type == OutputType.TIMESTAMP:
@@ -256,9 +295,14 @@ class AgentOutputParser(BaseModel):
                 return datetime.strptime(final_answer, self.output_schema)
             except ValueError as error:
                 raise ValueError(
-                    f"You made a mistake in your final answer: {final_answer}\n\n"
-                    + "Your goal is to correct your final answer\n\n"
-                    + f"{OUTPUT_TYPE_TIMESTAMP.format(output_schema=self.output_schema)}"
+                    "\n\n".join(
+                        [
+                            f"You made a mistake in your final answer:\n{final_answer}",
+                            f"The error was:\n{error}",
+                            "You need to correct your final answer",
+                            f"{OUTPUT_TYPE_TIMESTAMP.format(self.output_schema)}",
+                        ]
+                    )
                 ) from error
 
         if self.output_type in (OutputType.OBJECT, OutputType.STRUCT):
@@ -273,12 +317,17 @@ class AgentOutputParser(BaseModel):
                 final_answer_model = self.output_schema.model_validate(final_answer_dict)
                 return final_answer_model if self.output_type == OutputType.OBJECT else final_answer_model.model_dump()
 
-            except ValueError as error:
+            except (ValueError, ValidationError) as error:
                 args = self.output_schema.model_json_schema()["properties"]
                 raise ValueError(
-                    f"You made a mistake in your final answer: {final_answer}\n\n"
-                    + "Your goal is to correct your final answer\n\n"
-                    + f"{OUTPUT_TYPE_OBJECT_OR_STRUCT.format(output_schema=args, example=get_example_from_schema(args))}"
+                    "\n\n".join(
+                        [
+                            f"You made a mistake in your final answer:\n{final_answer}",
+                            f"The error was:\n{error}",
+                            "You need to correct your final answer",
+                            f"{OUTPUT_TYPE_OBJECT_OR_STRUCT.format(output_schema=get_schema_from_args(args))}",
+                        ]
+                    )
                 ) from error
 
         if self.output_type == OutputType.ARRAY_STRING:
@@ -290,14 +339,26 @@ class AgentOutputParser(BaseModel):
                     return final_answer
 
                 raise ValueError(
-                    f"You made a mistake in your final answer: {final_answer}\n\n"
-                    + f"Your goal is to correct your final answer\n\n{OUTPUT_TYPE_ARRAY_STRING}"
+                    "\n\n".join(
+                        [
+                            f"You made a mistake in your final answer:\n{final_answer}",
+                            "The error was:\nCould not parse array of strings.",
+                            "You need to correct your final answer",
+                            f"{OUTPUT_TYPE_ARRAY_STRING}",
+                        ]
+                    )
                 )
 
-            except TypeError as error:
-                raise TypeError(
-                    f"You made a mistake in your final answer: {final_answer}\n\n"
-                    + f"Your goal is to correct your final answer\n\n{OUTPUT_TYPE_ARRAY_STRING}"
+            except ValueError as error:
+                raise ValueError(
+                    "\n\n".join(
+                        [
+                            f"You made a mistake in your final answer:\n{final_answer}",
+                            "The error was:\n{error}",
+                            "You need to correct your final answer",
+                            f"{OUTPUT_TYPE_ARRAY_STRING}",
+                        ]
+                    )
                 ) from error
 
         if self.output_type == OutputType.ARRAY_INTEGER:
@@ -309,14 +370,26 @@ class AgentOutputParser(BaseModel):
                     return final_answer
 
                 raise ValueError(
-                    f"You made a mistake in your final answer: {final_answer}\n\n"
-                    + f"Your goal is to correct your final answer\n\n{OUTPUT_TYPE_ARRAY_INTEGER}"
+                    "\n\n".join(
+                        [
+                            f"You made a mistake in your final answer:\n{final_answer}",
+                            "The error was:\nCould not parse array of integers.",
+                            "You need to correct your final answer",
+                            f"{OUTPUT_TYPE_ARRAY_INTEGER}",
+                        ]
+                    )
                 )
 
-            except TypeError as error:
-                raise TypeError(
-                    f"You made a mistake in your final answer: {final_answer}\n\n"
-                    + f"Your goal is to correct your final answer\n\n{OUTPUT_TYPE_ARRAY_INTEGER}"
+            except ValueError as error:
+                raise ValueError(
+                    "\n\n".join(
+                        [
+                            f"You made a mistake in your final answer:\n{final_answer}",
+                            "The error was:\n{error}",
+                            "You need to correct your final answer",
+                            f"{OUTPUT_TYPE_ARRAY_INTEGER}",
+                        ]
+                    )
                 ) from error
 
         if self.output_type == OutputType.ARRAY_FLOAT:
@@ -328,14 +401,26 @@ class AgentOutputParser(BaseModel):
                     return final_answer
 
                 raise ValueError(
-                    f"You made a mistake in your final answer: {final_answer}\n\n"
-                    + f"Your goal is to correct your final answer\n\n{OUTPUT_TYPE_ARRAY_FLOAT}"
+                    "\n\n".join(
+                        [
+                            f"You made a mistake in your final answer:\n{final_answer}",
+                            "The error was:\nCould not parse array of floats.",
+                            "You need to correct your final answer",
+                            f"{OUTPUT_TYPE_ARRAY_FLOAT}",
+                        ]
+                    )
                 )
 
-            except TypeError as error:
-                raise TypeError(
-                    f"You made a mistake in your final answer: {final_answer}\n\n"
-                    + f"Your goal is to correct your final answer\n\n{OUTPUT_TYPE_ARRAY_FLOAT}"
+            except ValueError as error:
+                raise ValueError(
+                    "\n\n".join(
+                        [
+                            f"You made a mistake in your final answer:\n{final_answer}",
+                            "The error was:\n{error}",
+                            "You need to correct your final answer",
+                            f"{OUTPUT_TYPE_ARRAY_FLOAT}",
+                        ]
+                    )
                 ) from error
 
         if self.output_type in (OutputType.ARRAY_OBJECT, OutputType.ARRAY_STRUCT):
@@ -357,12 +442,16 @@ class AgentOutputParser(BaseModel):
                 else:
                     return [self.output_schema.model_validate(entry).model_dump() for entry in final_answer_list_dict]
 
-            except ValidationError as error:
-                args = self.output_schema.model_json_schema()["properties"]
+            except (ValueError, ValidationError) as error:
                 raise ValueError(
-                    f"You made a mistake in your final answer: {final_answer}\n\n"
-                    + "Your goal is to correct your final answer\n\n"
-                    + f"{OUTPUT_TYPE_ARRAY_OBJECT_OR_STRUCT.format(output_schema=args, example=get_example_from_schema(args))}"
+                    "\n\n".join(
+                        [
+                            f"You made a mistake in your final answer:\n{final_answer}",
+                            "The error was:\n{error}",
+                            "You need to correct your final answer",
+                            f"{OUTPUT_TYPE_OBJECT_OR_STRUCT.format(output_schema=get_schema_from_args(args))}",
+                        ]
+                    )
                 ) from error
 
     def _parse_final_answer(self, output: str) -> tuple[
@@ -385,12 +474,25 @@ class AgentOutputParser(BaseModel):
             instructions = INSTRUCTIONS_WITH_TOOLS if self.tool_use else INSTRUCTIONS_WITHOUT_TOOLS
             if self.output_type in (OutputType.OBJECT, OutputType.ARRAY_OBJECT):
                 args = self.output_schema.model_json_schema()["properties"]
-                final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[self.output_type].format(output_schema=args)
+                final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[self.output_type].format(
+                    output_schema=get_schema_from_args(args)
+                )
+            elif self.output_type in (OutputType.DATE, OutputType.TIMESTAMP):
+                final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[self.output_type].format(
+                    output_schema=self.output_schema
+                )
             else:
                 final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[self.output_type]
 
             raise ValueError(
-                f"You made a mistake in your response: {output}\n\nYour goal is to correct your response\n\n{instructions}\n\n{final_answer_instructions}"
+                "\n\n".join(
+                    [
+                        f"You made a mistake in your response: {output}",
+                        "You need to correct your response",
+                        f"{instructions}",
+                        f"{final_answer_instructions}",
+                    ]
+                )
             )
 
         thought = match.group(1).strip()
@@ -410,10 +512,23 @@ class AgentOutputParser(BaseModel):
         instructions = INSTRUCTIONS_WITH_TOOLS if self.tool_use else INSTRUCTIONS_WITHOUT_TOOLS
         if self.output_type in (OutputType.OBJECT, OutputType.ARRAY_OBJECT):
             args = self.output_schema.model_json_schema()["properties"]
-            final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[self.output_type].format(output_schema=args)
+            final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[self.output_type].format(
+                output_schema=get_schema_from_args(args)
+            )
+        elif self.output_type in (OutputType.DATE, OutputType.TIMESTAMP):
+            final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[self.output_type].format(
+                output_schema=self.output_schema
+            )
         else:
             final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[self.output_type]
 
         raise ValueError(
-            f"You made a mistake in your response: {output}\n\nYour goal is to correct your response\n\n{instructions}\n\n{final_answer_instructions}"
+            "\n\n".join(
+                [
+                    f"You made a mistake in your response: {output}",
+                    "You need to correct your response",
+                    f"{instructions}",
+                    f"{final_answer_instructions}",
+                ]
+            )
         )

@@ -18,14 +18,17 @@ from language_models.agent.chat import (
 from language_models.agent.output_parser import (
     FINAL_ANSWER_INSTRUCTIONS,
     AgentOutputParser,
-    LLMFinalAnswer,
+    LLMChainOfThoughtFinalAnswer,
+    LLMSingleCompletionFinalAnswer,
     LLMToolUse,
     OutputType,
+    PromptingStrategy,
     get_schema_from_args,
 )
 from language_models.agent.prompt import (
-    INSTRUCTIONS_WITH_TOOLS,
-    INSTRUCTIONS_WITHOUT_TOOLS,
+    CHAIN_OF_THOUGHT_INSTRUCTIONS_WITH_TOOLS,
+    CHAIN_OF_THOUGHT_INSTRUCTIONS_WITHOUT_TOOLS,
+    SINGLE_COMPLETION_INSTRUCTIONS,
 )
 from language_models.models.llm import ChatMessage, ChatMessageRole, OpenAILanguageModel
 from language_models.tools.tool import Tool
@@ -59,12 +62,26 @@ def num_tokens_from_messages(messages: list[ChatMessage]) -> int:
     return num_tokens
 
 
-class PromptingStrategy(str, Enum):
-    SINGLE_COMPLETION = "single-completion"
-    CHAIN_OF_THOUGHT = "chain-of-thought"
+class AgentSingleCompletionOutput(BaseModel):
+    """Class that represents the agent output."""
+
+    prompt: str
+    final_answer: (
+        str
+        | int
+        | float
+        | dict[str, Any]
+        | BaseModel
+        | list[str]
+        | list[int]
+        | list[float]
+        | list[dict[str, Any]]
+        | list[BaseModel]
+        | None
+    )
 
 
-class AgentOutput(BaseModel):
+class AgentChainOfThoughtOutput(BaseModel):
     """Class that represents the agent output."""
 
     prompt: str
@@ -95,6 +112,7 @@ class Agent(BaseModel):
     chat: Chat
     prompting_strategy: PromptingStrategy
     iterations: int = 10
+    verbose: bool
 
     def _trim_conversation(self) -> None:
         """Trims the chat messages to fit the LLM context length."""
@@ -103,7 +121,7 @@ class Agent(BaseModel):
             del self.chat.messages[1]
             num_tokens = num_tokens_from_messages(self.chat.messages)
 
-    def _parse_output(self, output: str) -> LLMToolUse | LLMFinalAnswer:
+    def _parse_output(self, output: str) -> LLMToolUse | LLMSingleCompletionFinalAnswer | LLMChainOfThoughtFinalAnswer:
         """Parses the LLM output."""
         try:
             output = self.output_parser.parse(output)
@@ -113,74 +131,100 @@ class Agent(BaseModel):
             observation = error
         return output, observation
 
-    def invoke(self, prompt: dict[str, Any]) -> AgentOutput:
+    def invoke(self, prompt: dict[str, Any]) -> AgentSingleCompletionOutput | AgentChainOfThoughtOutput:
         """Runs the agent given a prompt."""
         prompt = self.prompt.format(**{variable: prompt.get(variable) for variable in self.prompt_variables})
+        if self.verbose:
+            logging.info("Prompt:\n%s", prompt)
 
-        logging.info("Prompt:\n%s", prompt)
         self.chat.messages.append(ChatMessage(role=ChatMessageRole.USER, content=prompt))
-        self.chat.chain_of_thought = [ReasoningStep(name=ReasoningStepName.PROMPT, content=prompt)]
         self.chat.steps = []
 
         iteration = 0
         while iteration <= self.iterations:
             self._trim_conversation()
             output = self.llm.get_completion(self.chat.messages)
-            logging.info("Raw Output:\n%s", output)
+            if self.verbose:
+                logging.info("Raw Output:\n%s", output)
+
             output, observation = self._parse_output(output)
 
-            if output is not None:
-                logging.info("Thought:\n%s", output.thought)
-                self.chat.steps.append(f"Thought: {output.thought}")
-                self.chat.chain_of_thought.append(ReasoningStep(name=ReasoningStepName.THOUGHT, content=output.thought))
+            if self.prompting_strategy == PromptingStrategy.CHAIN_OF_THOUGHT:
+                self.chat.chain_of_thought = [ReasoningStep(name=ReasoningStepName.PROMPT, content=prompt)]
+                if output is not None:
+                    if self.verbose:
+                        logging.info("Thought:\n%s", output.thought)
 
-                if isinstance(output, LLMFinalAnswer):
-                    logging.info("Final Answer:\n%s", output.final_answer)
+                    self.chat.steps.append(f"Thought: {output.thought}")
                     self.chat.chain_of_thought.append(
-                        ReasoningStep(name=ReasoningStepName.FINAL_ANSWER, content=str(output.final_answer))
+                        ReasoningStep(name=ReasoningStepName.THOUGHT, content=output.thought)
                     )
+
+                    if isinstance(output, LLMChainOfThoughtFinalAnswer):
+                        if self.verbose:
+                            logging.info("Final Answer:\n%s", output.final_answer)
+
+                        self.chat.chain_of_thought.append(
+                            ReasoningStep(name=ReasoningStepName.FINAL_ANSWER, content=str(output.final_answer))
+                        )
+                        self.chat.messages.append(
+                            ChatMessage(role=ChatMessageRole.ASSISTANT, content=str(output.final_answer))
+                        )
+                        return AgentChainOfThoughtOutput(
+                            prompt=prompt,
+                            final_answer=output.final_answer,
+                            chain_of_thought=self.chat.chain_of_thought,
+                        )
+                    else:
+                        if self.tools is not None:
+                            if self.verbose:
+                                logging.info("Tool:\n%s", output.tool)
+                                logging.info("Tool Input:\n%s", output.tool_input)
+
+                            tool = self.tools.get(output.tool)
+                            if tool is not None:
+                                tool_output = tool.invoke(output.tool_input)
+                                observation = f"Tool Output:\n{tool_output}"
+                                if self.verbose:
+                                    logging.info(observation)
+
+                                self.chat.steps.append(f"Tool: {tool.name}")
+                                self.chat.steps.append(f"Tool Input: {output.tool_input}")
+                                self.chat.chain_of_thought.append(
+                                    ReasoningStep(
+                                        name=ReasoningStepName.TOOL,
+                                        content=ReasoningStepTool(
+                                            tool=output.tool, tool_input=output.tool_input, tool_output=tool_output
+                                        ),
+                                    )
+                                )
+
+                            else:
+                                tool_names = ", ".join(list(self.tools.keys()))
+                                observation = f"{output.tool} tool doesn't exist. Try one of these tools: {tool_names}"
+
+                self.chat.steps.append(f"Observation: {observation}")
+                self.chat.update(prompt)
+
+            else:
+                if isinstance(output, LLMSingleCompletionFinalAnswer):
+                    if self.verbose:
+                        logging.info("Final Answer:\n%s", output.final_answer)
+
                     self.chat.messages.append(
                         ChatMessage(role=ChatMessageRole.ASSISTANT, content=str(output.final_answer))
                     )
-                    return AgentOutput(
+                    return AgentSingleCompletionOutput(
                         prompt=prompt,
                         final_answer=output.final_answer,
-                        chain_of_thought=self.chat.chain_of_thought,
                     )
 
-                else:
-                    if self.tools is not None:
-                        logging.info("Tool:\n%s", output.tool)
-                        logging.info("Tool Input:\n%s", output.tool_input)
-                        tool = self.tools.get(output.tool)
-
-                        if tool is not None:
-                            tool_output = tool.invoke(output.tool_input)
-                            observation = f"Tool Output:\n{tool_output}"
-                            logging.info(observation)
-                            self.chat.steps.append(f"Tool: {tool.name}")
-                            self.chat.steps.append(f"Tool Input: {output.tool_input}")
-                            self.chat.chain_of_thought.append(
-                                ReasoningStep(
-                                    name=ReasoningStepName.TOOL,
-                                    content=ReasoningStepTool(
-                                        tool=output.tool, tool_input=output.tool_input, tool_output=tool_output
-                                    ),
-                                )
-                            )
-
-                        else:
-                            tool_names = ", ".join(list(self.tools.keys()))
-                            observation = f"{output.tool} tool doesn't exist. Try one of these tools: {tool_names}"
-
-            self.chat.steps.append(f"Observation: {observation}")
-            self.chat.update(prompt)
             iteration += 1
 
         if self.output_parser.output_type == OutputType.STRUCT:
-            final_answer = {key: None for key in self.output_parser.object_schema.model_json_schema()["properties"]}
+            final_answer = {key: None for key in self.output_parser.output_schema.model_json_schema()["properties"]}
         elif self.output_parser.output_type == OutputType.ARRAY_STRUCT:
-            final_answer = [{key: None for key in self.output_parser.object_schema.model_json_schema()["properties"]}]
+            final_answer = [{key: None for key in self.output_parser.output_schema.model_json_schema()["properties"]}]
         elif self.output_parser.output_type in (OutputType.OBJECT, OutputType.ARRAY_OBJECT):
             fields = self.output_parser.output_schema.__annotations__
             optional_fields = {field: (data_type | None, None) for field, data_type in fields.items()}
@@ -189,12 +233,15 @@ class Agent(BaseModel):
         else:
             final_answer = None
 
-        logging.info("Final Answer:\n%s", final_answer)
-        return AgentOutput(
-            prompt=prompt,
-            final_answer=final_answer,
-            chain_of_thought=self.chat.chain_of_thought,
-        )
+        if self.verbose:
+            logging.info("Final Answer:\n%s", final_answer)
+
+        if self.prompting_strategy == PromptingStrategy.CHAIN_OF_THOUGHT:
+            return AgentChainOfThoughtOutput(
+                prompt=prompt, final_answer=final_answer, chain_of_thought=self.chat.chain_of_thought
+            )
+        else:
+            return AgentSingleCompletionOutput(prompt=prompt, final_answer=final_answer)
 
     @classmethod
     def create(
@@ -207,17 +254,27 @@ class Agent(BaseModel):
         output_schema: type[BaseModel] | str | None = None,
         tools: list[Tool] | None = None,
         prompting_strategy: PromptingStrategy = PromptingStrategy.CHAIN_OF_THOUGHT,
-        iterations: int = 10,
+        verbose: bool = True,
     ) -> Agent:
         """Creates an instance of the ReAct agent."""
-        if tools is None:
-            instructions = INSTRUCTIONS_WITHOUT_TOOLS
+        if prompting_strategy == PromptingStrategy.CHAIN_OF_THOUGHT:
+            if tools is None:
+                instructions = CHAIN_OF_THOUGHT_INSTRUCTIONS_WITHOUT_TOOLS
+                tool_use = False
+                tools = None
+                iterations = 5
+            else:
+                instructions = CHAIN_OF_THOUGHT_INSTRUCTIONS_WITH_TOOLS.format(
+                    tools="\n\n".join([str(tool) for tool in tools])
+                )
+                tool_use = True
+                tools = {tool.name: tool for tool in tools}
+                iterations = max(5, len(tools) * 2)
+        else:
+            instructions = SINGLE_COMPLETION_INSTRUCTIONS
             tool_use = False
             tools = None
-        else:
-            instructions = INSTRUCTIONS_WITH_TOOLS.format(tools="\n\n".join([str(tool) for tool in tools]))
-            tool_use = True
-            tools = {tool.name: tool for tool in tools}
+            iterations = 1
 
         if output_type in (OutputType.OBJECT, OutputType.ARRAY_OBJECT):
             if output_schema is None:
@@ -241,7 +298,12 @@ class Agent(BaseModel):
             ]
         )
 
-        output_parser = AgentOutputParser(output_type=output_type, output_schema=output_schema, tool_use=tool_use)
+        output_parser = AgentOutputParser(
+            output_type=output_type,
+            output_schema=output_schema,
+            prompting_strategy=prompting_strategy,
+            tool_use=tool_use,
+        )
 
         return Agent(
             llm=llm,
@@ -252,4 +314,5 @@ class Agent(BaseModel):
             chat=chat,
             prompting_strategy=prompting_strategy,
             iterations=iterations,
+            verbose=verbose,
         )

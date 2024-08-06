@@ -14,6 +14,7 @@ from language_models.agent.chat import (
     ReasoningStepName,
     ReasoningStepTool,
 )
+from language_models.agent.output_parser import PromptingStrategy
 from language_models.tools.tool import Tool
 
 
@@ -66,7 +67,13 @@ class ChainAgentBlock(BaseModel):
 
     def invoke(self, inputs: dict[str, Any]) -> ChainBlockOutput:
         output = self.agent.invoke(inputs)
-        return ChainBlockOutput(inputs=inputs, output=output.final_answer, steps=output.chain_of_thought)
+        return ChainBlockOutput(
+            inputs=inputs,
+            output=output.final_answer,
+            steps=(
+                output.chain_of_thought if self.agent.prompting_strategy == PromptingStrategy.CHAIN_OF_THOUGHT else []
+            ),
+        )
 
 
 class ChainFilterBlock(BaseModel):

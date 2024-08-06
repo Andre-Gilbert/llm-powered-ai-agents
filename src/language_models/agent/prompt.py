@@ -1,6 +1,15 @@
 """ReAct agent prompt."""
 
-INSTRUCTIONS_WITH_TOOLS = """### Tools ###
+SINGLE_COMPLETION_INSTRUCTIONS = """### Instructions ###
+
+Your goal is to solve the problem you will be provided with
+
+You should respond with:
+```
+<response to the prompt>
+```"""
+
+CHAIN_OF_THOUGHT_INSTRUCTIONS_WITH_TOOLS = """### Tools ###
 
 You have access to the following tools:
 {tools}
@@ -27,8 +36,7 @@ Thought: <thought process on how to respond to the prompt>
 Final Answer: <response to the prompt>
 ```"""
 
-
-INSTRUCTIONS_WITHOUT_TOOLS = """### Instructions ###
+CHAIN_OF_THOUGHT_INSTRUCTIONS_WITHOUT_TOOLS = """### Instructions ###
 
 Your goal is to solve the problem you will be provided with
 

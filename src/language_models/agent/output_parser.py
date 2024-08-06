@@ -23,7 +23,7 @@ from language_models.agent.prompt import (
     OUTPUT_TYPE_TIMESTAMP,
 )
 
-INSTRUCTIONS_WITH_TOOLS = """You should respond with:
+CHAIN_OF_THOUGHT_INSTRUCTIONS_WITH_TOOLS = """You should respond with:
 ```
 Thought: <thought process on how to respond to the prompt>
 
@@ -41,7 +41,20 @@ Thought: <thought process on how to respond to the prompt>
 Final Answer: <response to the prompt>
 ```"""
 
-INSTRUCTIONS_WITHOUT_TOOLS = """You should respond with:
+
+CHAIN_OF_THOUGHT_TOOL_INSTRUCTIONS = """You should respond with:
+```
+Thought: <thought process on how to respond to the prompt>
+
+Tool: <name of the tool to use>
+
+Tool Input: <input of the tool to use>
+```
+
+Your <input of the tool to use> must be a JSON format representing the keyword arguments of <name of the tool to use>"""
+
+
+CHAIN_OF_THOUGHT_FINAL_ANSWER_INSTRUCTIONS = """You should respond with:
 ```
 Thought: <thought process on how to respond to the prompt>
 
@@ -86,13 +99,33 @@ FINAL_ANSWER_INSTRUCTIONS = {
 }
 
 
+class PromptingStrategy(str, Enum):
+    SINGLE_COMPLETION = "single-completion"
+    CHAIN_OF_THOUGHT = "chain-of-thought"
+
+
 class LLMToolUse(BaseModel):
     thought: str
     tool: str
     tool_input: dict
 
 
-class LLMFinalAnswer(BaseModel):
+class LLMSingleCompletionFinalAnswer(BaseModel):
+    final_answer: (
+        str
+        | int
+        | float
+        | dict[str, Any]
+        | BaseModel
+        | list[str]
+        | list[int]
+        | list[float]
+        | list[dict[str, Any]]
+        | list[BaseModel]
+    )
+
+
+class LLMChainOfThoughtFinalAnswer(BaseModel):
     thought: str
     final_answer: (
         str
@@ -155,6 +188,7 @@ class AgentOutputParser(BaseModel):
 
     output_type: OutputType
     output_schema: type[BaseModel] | str | None = None
+    prompting_strategy: PromptingStrategy
     tool_use: bool
 
     def _extract_tool_use(self, output: str) -> tuple[str, str, str]:
@@ -163,8 +197,13 @@ class AgentOutputParser(BaseModel):
         match = re.search(pattern, output, re.DOTALL)
         if not match:
             raise ValueError(
-                f"You made a mistake in your response: {output}\n\n"
-                + f"Your goal is to correct your response\n\n{INSTRUCTIONS_WITH_TOOLS}"
+                "\n\n".join(
+                    [
+                        f"You made a mistake in your response:\n{output}",
+                        "Your need to correct your response",
+                        f"{CHAIN_OF_THOUGHT_TOOL_INSTRUCTIONS}",
+                    ]
+                )
             )
 
         thought = match.group(1).strip()
@@ -176,8 +215,13 @@ class AgentOutputParser(BaseModel):
         match = re.search(r"\{.*\}", tool_input.strip(), re.MULTILINE | re.IGNORECASE | re.DOTALL)
         if not match:
             raise ValueError(
-                f"You made a mistake in your JSON format: {tool_input}\n\n"
-                + f"Your goal is to correct your response\n\n{INSTRUCTIONS_WITH_TOOLS}"
+                "\n\n".join(
+                    [
+                        f"You made a mistake in your JSON format:\n{tool_input}",
+                        "Your need to correct your response",
+                        f"{CHAIN_OF_THOUGHT_TOOL_INSTRUCTIONS}",
+                    ]
+                )
             )
 
         return match.group()
@@ -471,7 +515,11 @@ class AgentOutputParser(BaseModel):
 
         match = re.search(pattern, output, re.DOTALL)
         if not match:
-            instructions = INSTRUCTIONS_WITH_TOOLS if self.tool_use else INSTRUCTIONS_WITHOUT_TOOLS
+            instructions = (
+                CHAIN_OF_THOUGHT_INSTRUCTIONS_WITH_TOOLS
+                if self.tool_use
+                else CHAIN_OF_THOUGHT_FINAL_ANSWER_INSTRUCTIONS
+            )
             if self.output_type in (OutputType.OBJECT, OutputType.ARRAY_OBJECT):
                 args = self.output_schema.model_json_schema()["properties"]
                 final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[self.output_type].format(
@@ -487,7 +535,7 @@ class AgentOutputParser(BaseModel):
             raise ValueError(
                 "\n\n".join(
                     [
-                        f"You made a mistake in your response: {output}",
+                        f"You made a mistake in your response:\n{output}",
                         "You need to correct your response",
                         f"{instructions}",
                         f"{final_answer_instructions}",
@@ -500,35 +548,43 @@ class AgentOutputParser(BaseModel):
         final_answer = self._validate_final_answer(final_answer)
         return thought, final_answer
 
-    def parse(self, output: str) -> LLMToolUse | LLMFinalAnswer:
-        if "Tool:" in output:
-            thought, tool, tool_input = self._parse_tool(output)
-            return LLMToolUse(thought=thought, tool=tool, tool_input=tool_input)
+    def parse(self, output: str) -> LLMToolUse | LLMSingleCompletionFinalAnswer | LLMChainOfThoughtFinalAnswer:
+        if self.prompting_strategy == PromptingStrategy.CHAIN_OF_THOUGHT:
+            if "Tool:" in output:
+                thought, tool, tool_input = self._parse_tool(output)
+                return LLMToolUse(thought=thought, tool=tool, tool_input=tool_input)
 
-        if "Final Answer:" in output:
-            thought, final_answer = self._parse_final_answer(output)
-            return LLMFinalAnswer(thought=thought, final_answer=final_answer)
+            if "Final Answer:" in output:
+                thought, final_answer = self._parse_final_answer(output)
+                return LLMChainOfThoughtFinalAnswer(thought=thought, final_answer=final_answer)
 
-        instructions = INSTRUCTIONS_WITH_TOOLS if self.tool_use else INSTRUCTIONS_WITHOUT_TOOLS
-        if self.output_type in (OutputType.OBJECT, OutputType.ARRAY_OBJECT):
-            args = self.output_schema.model_json_schema()["properties"]
-            final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[self.output_type].format(
-                output_schema=get_schema_from_args(args)
+            instructions = (
+                CHAIN_OF_THOUGHT_INSTRUCTIONS_WITH_TOOLS
+                if self.tool_use
+                else CHAIN_OF_THOUGHT_FINAL_ANSWER_INSTRUCTIONS
             )
-        elif self.output_type in (OutputType.DATE, OutputType.TIMESTAMP):
-            final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[self.output_type].format(
-                output_schema=self.output_schema
+            if self.output_type in (OutputType.OBJECT, OutputType.ARRAY_OBJECT):
+                args = self.output_schema.model_json_schema()["properties"]
+                final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[self.output_type].format(
+                    output_schema=get_schema_from_args(args)
+                )
+            elif self.output_type in (OutputType.DATE, OutputType.TIMESTAMP):
+                final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[self.output_type].format(
+                    output_schema=self.output_schema
+                )
+            else:
+                final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[self.output_type]
+
+            raise ValueError(
+                "\n\n".join(
+                    [
+                        f"You made a mistake in your response:\n{output}",
+                        "You need to correct your response",
+                        f"{instructions}",
+                        f"{final_answer_instructions}",
+                    ]
+                )
             )
         else:
-            final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[self.output_type]
-
-        raise ValueError(
-            "\n\n".join(
-                [
-                    f"You made a mistake in your response: {output}",
-                    "You need to correct your response",
-                    f"{instructions}",
-                    f"{final_answer_instructions}",
-                ]
-            )
-        )
+            final_answer = self._validate_final_answer(output)
+            return LLMSingleCompletionFinalAnswer(final_answer=final_answer)

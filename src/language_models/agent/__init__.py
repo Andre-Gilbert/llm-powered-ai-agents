@@ -1,4 +1,4 @@
-from language_models.agent.agent import Agent, AgentOutput
+from language_models.agent.agent import Agent
 from language_models.agent.chain import (
     Chain,
     ChainAgentBlock,
@@ -10,4 +10,4 @@ from language_models.agent.chat import (
     ReasoningStepName,
     ReasoningStepTool,
 )
-from language_models.agent.output_parser import OutputType
+from language_models.agent.output_parser import OutputType, PromptingStrategy

@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import logging
-from enum import Enum
+import sys
 from typing import Any
 
 import tiktoken
+from loguru import logger
 from pydantic import BaseModel, ValidationError, create_model
 
 from language_models.agent.chat import (
@@ -33,10 +33,12 @@ from language_models.agent.prompt import (
 from language_models.models.llm import ChatMessage, ChatMessageRole, OpenAILanguageModel
 from language_models.tools.tool import Tool
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(message)s",
-    datefmt="%d/%m/%y %H:%M:%S",
+logger.remove()
+logger.add(
+    sys.stderr,
+    format="<green>{time:DD/MM/YYYY HH:MM:SS}</green> | <level>{level}</level> | {message}",
+    level="INFO",
+    colorize=True,
 )
 
 
@@ -135,7 +137,7 @@ class Agent(BaseModel):
         """Runs the agent given a prompt."""
         prompt = self.prompt.format(**{variable: prompt.get(variable) for variable in self.prompt_variables})
         if self.verbose:
-            logging.info("Prompt: %s", prompt)
+            logger.info(f"Prompt: {prompt}")
 
         self.chat.messages.append(ChatMessage(role=ChatMessageRole.USER, content=prompt))
         self.chat.steps = []
@@ -145,7 +147,7 @@ class Agent(BaseModel):
             self._trim_conversation()
             output = self.llm.get_completion(self.chat.messages)
             if self.verbose:
-                logging.info("Raw Output: %s", output)
+                logger.info(f"Raw Output: {output}")
 
             output, observation = self._parse_output(output)
 
@@ -153,7 +155,7 @@ class Agent(BaseModel):
                 self.chat.chain_of_thought = [ReasoningStep(name=ReasoningStepName.PROMPT, content=prompt)]
                 if output is not None:
                     if self.verbose:
-                        logging.info("Thought: %s", output.thought)
+                        logger.info(f"Thought: {output.thought}")
 
                     self.chat.steps.append(f"Thought: {output.thought}")
                     self.chat.chain_of_thought.append(
@@ -162,7 +164,7 @@ class Agent(BaseModel):
 
                     if isinstance(output, LLMChainOfThoughtFinalAnswer):
                         if self.verbose:
-                            logging.info("Final Answer: %s", output.final_answer)
+                            logger.success(f"Final Answer: {output.final_answer}")
 
                         self.chat.chain_of_thought.append(
                             ReasoningStep(name=ReasoningStepName.FINAL_ANSWER, content=str(output.final_answer))
@@ -178,15 +180,15 @@ class Agent(BaseModel):
                     else:
                         if self.tools is not None:
                             if self.verbose:
-                                logging.info("Tool: %s", output.tool)
-                                logging.info("Tool Input: %s", output.tool_input)
+                                logger.info(f"Tool: {output.tool}")
+                                logger.info(f"Tool Input: {output.tool_input}")
 
                             tool = self.tools.get(output.tool)
                             if tool is not None:
                                 tool_output = tool.invoke(output.tool_input)
                                 observation = f"Tool Output: {tool_output}"
                                 if self.verbose:
-                                    logging.info(observation)
+                                    logger.info(f"Tool Output: {tool_output}")
 
                                 self.chat.steps.append(f"Tool: {tool.name}")
                                 self.chat.steps.append(f"Tool Input: {output.tool_input}")
@@ -209,7 +211,7 @@ class Agent(BaseModel):
             else:
                 if isinstance(output, LLMSingleCompletionFinalAnswer):
                     if self.verbose:
-                        logging.info("Final Answer: %s", output.final_answer)
+                        logger.success(f"Final Answer: {output.final_answer}")
 
                     self.chat.messages.append(
                         ChatMessage(role=ChatMessageRole.ASSISTANT, content=str(output.final_answer))
@@ -234,7 +236,7 @@ class Agent(BaseModel):
             final_answer = None
 
         if self.verbose:
-            logging.info("Final Answer: %s", final_answer)
+            logger.warning(f"Final Answer: {final_answer}")
 
         if self.prompting_strategy == PromptingStrategy.CHAIN_OF_THOUGHT:
             return AgentChainOfThoughtOutput(

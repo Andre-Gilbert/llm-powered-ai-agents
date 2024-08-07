@@ -100,7 +100,7 @@ FINAL_ANSWER_INSTRUCTIONS = {
 
 
 class PromptingStrategy(str, Enum):
-    SINGLE_COMPLETION = "single-completion"
+    SINGLE_COMPLETION = "single completion"
     CHAIN_OF_THOUGHT = "chain-of-thought"
 
 

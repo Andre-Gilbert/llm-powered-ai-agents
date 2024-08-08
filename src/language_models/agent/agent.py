@@ -133,9 +133,6 @@ class Agent(BaseModel):
     def invoke(self, prompt: dict[str, Any]) -> AgentSingleCompletionOutput | AgentChainOfThoughtOutput:
         """Runs the agent given a prompt."""
         prompt = self.prompt.format(**{variable: prompt.get(variable) for variable in self.prompt_variables})
-        if self.verbose:
-            logger.info(f"Prompt: {prompt}")
-
         if self.prompting_strategy == PromptingStrategy.CHAIN_OF_THOUGHT:
             self.chat.chain_of_thought = [ReasoningStep(name=ReasoningStepName.PROMPT, content=prompt)]
 
@@ -146,15 +143,12 @@ class Agent(BaseModel):
         while iteration <= self.iterations:
             self._trim_conversation()
             output = self.llm.get_completion(self.chat.messages)
-            if self.verbose:
-                logger.info(f"Raw Output: {output}")
-
             output, observation = self._parse_output(output)
 
             if self.prompting_strategy == PromptingStrategy.CHAIN_OF_THOUGHT:
                 if output is not None:
                     if self.verbose:
-                        logger.info(f"Thought: {output.thought}")
+                        logger.opt(colors=True).info(f"<b><fg #2D72D2>Thought</fg #2D72D2></b>: {output.thought}")
 
                     self.chat.steps.append(f"Thought: {output.thought}")
                     self.chat.chain_of_thought.append(
@@ -163,7 +157,9 @@ class Agent(BaseModel):
 
                     if isinstance(output, LLMChainOfThoughtFinalAnswer):
                         if self.verbose:
-                            logger.success(f"Final Answer: {output.final_answer}")
+                            logger.opt(colors=True).success(
+                                f"<b><fg #32A467>Final Answer</fg #32A467></b>: {output.final_answer}"
+                            )
 
                         self.chat.chain_of_thought.append(
                             ReasoningStep(name=ReasoningStepName.FINAL_ANSWER, content=str(output.final_answer))
@@ -179,15 +175,19 @@ class Agent(BaseModel):
                     else:
                         if self.tools is not None:
                             if self.verbose:
-                                logger.info(f"Tool: {output.tool}")
-                                logger.info(f"Tool Input: {output.tool_input}")
+                                logger.opt(colors=True).info(f"<b><fg #EC9A3C>Tool</fg #EC9A3C></b>: {output.tool}")
+                                logger.opt(colors=True).info(
+                                    f"<b><fg #EC9A3C>Tool Input</fg #EC9A3C></b>: {output.tool_input}"
+                                )
 
                             tool = self.tools.get(output.tool)
                             if tool is not None:
                                 tool_output = tool.invoke(output.tool_input)
                                 observation = f"Tool Output: {tool_output}"
                                 if self.verbose:
-                                    logger.info(f"Tool Output: {tool_output}")
+                                    logger.opt(colors=True).info(
+                                        f"<b><fg #EC9A3C>Tool Output</fg #EC9A3C></b>: {tool_output}"
+                                    )
 
                                 self.chat.steps.append(f"Tool: {tool.name}")
                                 self.chat.steps.append(f"Tool Input: {output.tool_input}")
@@ -210,7 +210,9 @@ class Agent(BaseModel):
             else:
                 if isinstance(output, LLMSingleCompletionFinalAnswer):
                     if self.verbose:
-                        logger.success(f"Final Answer: {output.final_answer}")
+                        logger.opt(colors=True).success(
+                            f"<b><fg #32A467>Final Answer</fg #32A467></b>: {output.final_answer}"
+                        )
 
                     self.chat.messages.append(
                         ChatMessage(role=ChatMessageRole.ASSISTANT, content=str(output.final_answer))
@@ -235,7 +237,7 @@ class Agent(BaseModel):
             final_answer = None
 
         if self.verbose:
-            logger.warning(f"Final Answer: {final_answer}")
+            logger.opt(colors=True).warning(f"<b><fg #CD4246>Final Answer</fg #CD4246></b>: {final_answer}")
 
         if self.prompting_strategy == PromptingStrategy.CHAIN_OF_THOUGHT:
             return AgentChainOfThoughtOutput(

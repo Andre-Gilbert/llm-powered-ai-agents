@@ -19,6 +19,7 @@ class Tool(BaseModel):
     name: str
     description: str
     args_schema: type[BaseModel] | None = None
+    requires_approval: bool = False
 
     @property
     def args(self) -> dict[str, Any] | None:
@@ -37,6 +38,19 @@ class Tool(BaseModel):
 
     def invoke(self, tool_input: dict[str, Any]) -> Any:
         """Invokes a tool given arguments provided by an LLM."""
+        if self.requires_approval:
+            decision = input(
+                "\n\n".join(
+                    [
+                        "Do you allow the invocation of the tool (Y/y/Yes/yes)?",
+                        f"Tool: {self.name}",
+                        f"Tool Input: {None if self.args else tool_input}",
+                    ]
+                )
+            )
+            if decision not in ("Y", "y", "Yes", "yes"):
+                return "User did not approve the invocation of the tool"
+
         if self.args is None:
             output = self.function()
         else:

@@ -268,7 +268,6 @@ class Agent(BaseModel):
                 instructions = CHAIN_OF_THOUGHT_INSTRUCTIONS_WITH_TOOLS.format(
                     tools="\n\n".join([str(tool) for tool in tools])
                 )
-                print(instructions)
                 tool_use = True
                 tools = {tool.name: tool for tool in tools}
                 iterations = max(5, len(tools) * 2)

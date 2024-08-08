@@ -34,12 +34,7 @@ from language_models.models.llm import ChatMessage, ChatMessageRole, OpenAILangu
 from language_models.tools.tool import Tool
 
 logger.remove()
-logger.add(
-    sys.stderr,
-    format="<green>{time:DD/MM/YYYY HH:MM:SS}</green> | <level>{level}</level> | {message}",
-    level="INFO",
-    colorize=True,
-)
+logger.add(sys.stderr, format="{message}", level="INFO")
 
 
 _MODEL_TOKEN_LIMIT = {
@@ -53,14 +48,16 @@ _MODEL_TOKEN_LIMIT = {
 def num_tokens_from_messages(messages: list[ChatMessage]) -> int:
     """Counts the number of tokens in the conversation history."""
     encoding = tiktoken.get_encoding("cl100k_base")
+    tokens_per_message = 3
+    tokens_per_name = 1
     num_tokens = 0
     for message in messages:
-        num_tokens += 4
+        num_tokens += tokens_per_message
         for key, value in message.model_dump().items():
             num_tokens += len(encoding.encode(value))
             if key == "name":
-                num_tokens += -1
-    num_tokens += 2
+                num_tokens += tokens_per_name
+    num_tokens += 3
     return num_tokens
 
 
@@ -139,6 +136,9 @@ class Agent(BaseModel):
         if self.verbose:
             logger.info(f"Prompt: {prompt}")
 
+        if self.prompting_strategy == PromptingStrategy.CHAIN_OF_THOUGHT:
+            self.chat.chain_of_thought = [ReasoningStep(name=ReasoningStepName.PROMPT, content=prompt)]
+
         self.chat.messages.append(ChatMessage(role=ChatMessageRole.USER, content=prompt))
         self.chat.steps = []
 
@@ -152,7 +152,6 @@ class Agent(BaseModel):
             output, observation = self._parse_output(output)
 
             if self.prompting_strategy == PromptingStrategy.CHAIN_OF_THOUGHT:
-                self.chat.chain_of_thought = [ReasoningStep(name=ReasoningStepName.PROMPT, content=prompt)]
                 if output is not None:
                     if self.verbose:
                         logger.info(f"Thought: {output.thought}")

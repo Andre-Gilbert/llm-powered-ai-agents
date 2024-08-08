@@ -91,6 +91,6 @@ class ProxyClient(BaseModel):
                     timeout=settings.API_REQUEST_TIMEOUT_SECONDS,
                 )
             response.raise_for_status()
-        except requests.exceptions.RequestException as e:
-            raise e
+        except requests.exceptions.RequestException as error:
+            raise error
         return response.json()

@@ -11,7 +11,7 @@ from typing import Any
 import faiss
 import numpy as np
 from langchain_core.documents import Document
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 
 from language_models.models.embedding import SentenceTransformerEmbeddingModel
 
@@ -37,7 +37,7 @@ class FAISSVectorStore(BaseModel):
 
     embedding_model: SentenceTransformerEmbeddingModel
     index: Any = None
-    documents: dict[int, Any] = {}
+    documents: dict[int, Document] = {}
     distance_metric: DistanceMetric = DistanceMetric.COSINE_SIMILARITY
     _normalize_L2: bool = True
 

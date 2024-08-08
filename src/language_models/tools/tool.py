@@ -20,6 +20,7 @@ class Tool(BaseModel):
     description: str
     args_schema: type[BaseModel] | None = None
 
+    @property
     def args(self) -> dict[str, Any] | None:
         """Gets the tool model JSON schema."""
         if self.args_schema is None:

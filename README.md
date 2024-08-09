@@ -6,14 +6,14 @@ In today's fast-paced world of AI, there is an increasing demand for custom AI s
 
 ## Table of contents
 
-1. Chapter: [Prompting](/src/prompting.ipynb)
-2. Chapter: [Tools](/src/tools.ipynb)
-3. Chapter: [Structured Outputs](/src/structured_outputs.ipynb)
-4. Chapter: [AI Agents](/src/ai_agents.ipynb)
-5. Chapter: [AI Agent Workflows](/src/ai_agent_workflows.ipynb)
-6. Chapter: [Multi-Agents](/src/multi_agents.ipynb)
-7. Chapter: [Retrieval Augmented Generation (RAG)](/src/rag.ipynb)
-8. Chapter: [Building Trust and Transparency in LLMs](/src/trust_and_transparency.ipynb)
+1. Chapter: [Prompting](/01_chapter_prompting.ipynb)
+2. Chapter: [Tools](/02_chapter_tools.ipynb)
+3. Chapter: [Structured Outputs](/03_chapter_structured_outputs.ipynb)
+4. Chapter: [AI Agents](/04_chapter_ai_agents.ipynb)
+5. Chapter: [AI Agent Workflows](/05_chapter_ai_agent_workflows.ipynb)
+6. Chapter: [Multi-Agents](/06_chapter_multi_agents.ipynb)
+7. Chapter: [Retrieval Augmented Generation (RAG)](/07_chapter_rag.ipynb)
+8. Chapter: [Building Trust and Transparency in LLMs](/08_chapter_trust_and_transparency.ipynb)
 9. Chapter: [LLMs integrating with Forecasting Models]()
 10. Chapter: [Transforming Unstructured Data into Structured Formats]()
 

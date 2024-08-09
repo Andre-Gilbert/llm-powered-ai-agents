@@ -60,10 +60,10 @@ class Tool(BaseModel):
             except ValidationError as error:
                 output = "\n\n".join(
                     [
-                        f"Could not run tool {self.name} with input: {tool_input}",
-                        f"Here is the Pydantic validation error:\n{error}",
-                        "Your should correct your response",
-                        f"Your <input of the tool to use> must be a JSON format with the keyword arguments of: {self.args}",
+                        f"Could not run tool {self.name} with input:\n{tool_input}",
+                        f"The error was:\n{error}",
+                        "You need to correct your response",
+                        f"Your <input of the tool to use> must be a JSON format with the keyword arguments of:\n{self.args}",
                     ]
                 )
         return output

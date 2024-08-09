@@ -6,26 +6,16 @@ In today's fast-paced world of AI, there is an increasing demand for custom AI s
 
 ## Table of contents
 
-### LLM-powered AI Agents 101
-
-1. Chapter: [Large Language Model (LLM)](/src/llm.ipynb)
-2. Chapter: [Prompting](/src/prompting.ipynb)
-3. Chapter: [Tools](/src/tools.ipynb)
-4. Chapter: [Structured Outputs](/src/structured_outputs.ipynb)
-5. Chapter: [AI Agents](/src/ai_agents.ipynb)
-6. Chapter: [AI Agent Workflows](/src/ai_agent_workflows.ipynb)
-7. Chapter: [Multi-Agents](/src/multi_agents.ipynb)
-8. Chapter: [Retrieval Augmented Generation (RAG)](/src/rag.ipynb)
-9. Chapter: [Fine-Tuning](/src/fine_tuning.ipynb)
-10. Chapter: [Building Trust and Transparency in LLMs](/src/trust_and_transparency.ipynb)
-
-### Modeling Approaches of Use Cases
-
-1. Chapter: [LLMs integrating with Forecasting Models]()
-2. Chapter: [Transforming Unstructured Data into Structured Formats]()
-3. Chapter: []()
-4. Chapter: []()
-5. Chapter: []()
+1. Chapter: [Prompting](/src/prompting.ipynb)
+2. Chapter: [Tools](/src/tools.ipynb)
+3. Chapter: [Structured Outputs](/src/structured_outputs.ipynb)
+4. Chapter: [AI Agents](/src/ai_agents.ipynb)
+5. Chapter: [AI Agent Workflows](/src/ai_agent_workflows.ipynb)
+6. Chapter: [Multi-Agents](/src/multi_agents.ipynb)
+7. Chapter: [Retrieval Augmented Generation (RAG)](/src/rag.ipynb)
+8. Chapter: [Building Trust and Transparency in LLMs](/src/trust_and_transparency.ipynb)
+9. Chapter: [LLMs integrating with Forecasting Models]()
+10. Chapter: [Transforming Unstructured Data into Structured Formats]()
 
 ## License
 

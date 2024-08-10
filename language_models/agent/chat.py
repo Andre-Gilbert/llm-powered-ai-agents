@@ -38,7 +38,7 @@ class Chat(BaseModel):
 
     def update(self, prompt: str) -> None:
         """Modifies the user prompt to include intermediate steps."""
-        self.messages[-1].content = prompt + "\n\nThis was your previous work:" + "\n\n".join(self.steps)
+        self.messages[-1].content = "\n\n".join([prompt, f"This was your previous work:\n{'\n\n'.join(self.steps)}"])
 
     def reset(self) -> None:
         """Resets the chat."""

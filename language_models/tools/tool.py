@@ -2,6 +2,7 @@
 
 from typing import Any, Callable
 
+from loguru import logger
 from pydantic import BaseModel, ValidationError
 
 
@@ -36,7 +37,7 @@ class Tool(BaseModel):
             return {key: getattr(result, key) for key, _ in result.model_dump().items() if key in tool_input}
         return tool_input
 
-    def invoke(self, tool_input: dict[str, Any]) -> Any:
+    def invoke(self, tool_input: dict[str, Any], verbose: bool) -> Any:
         """Invokes a tool given arguments provided by an LLM."""
         if self.requires_approval:
             decision = input(
@@ -49,7 +50,13 @@ class Tool(BaseModel):
                 )
             )
             if decision not in ("Y", "y", "Yes", "yes"):
+                if verbose:
+                    logger.opt(colors=True).info("<fg #EC9A3C>Tool Use Approved</fg #EC9A3C>: No")
+
                 return "User did not approve the invocation of the tool"
+
+            if verbose:
+                logger.opt(colors=True).info("<fg #EC9A3C>Tool Use Approved</fg #EC9A3C>: Yes")
 
         if self.args is None:
             output = self.function()

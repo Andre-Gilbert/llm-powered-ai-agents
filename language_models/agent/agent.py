@@ -182,7 +182,7 @@ class Agent(BaseModel):
 
                             tool = self.tools.get(output.tool)
                             if tool is not None:
-                                tool_output = tool.invoke(output.tool_input)
+                                tool_output = tool.invoke(output.tool_input, self.verbose)
                                 observation = f"Tool Output: {tool_output}"
                                 if self.verbose:
                                     logger.opt(colors=True).info(f"<fg #EC9A3C>Tool Output</fg #EC9A3C>: {tool_output}")

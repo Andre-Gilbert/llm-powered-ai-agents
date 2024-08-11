@@ -142,7 +142,7 @@ class LLMChainOfThoughtFinalAnswer(BaseModel):
 
 
 def get_schema_from_args(args: dict[str, Any]) -> dict[str, Any]:
-    template = '    "{field}": {field_type},  # {description}'
+    template = '    "{field}": {field_type}, # {description}'
     fields = []
     for field, details in args.items():
         field_type = details.get("type")

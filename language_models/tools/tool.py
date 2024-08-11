@@ -14,6 +14,8 @@ class Tool(BaseModel):
         name: The name of the tool.
         description: The description of when to use the tool or what the tool does.
         args_schema: The Pydantic model that represents the input arguments.
+        requires_approval: Whether the human needs to approve the tool use.
+            Defaults to False.
     """
 
     function: Callable[[Any], Any]

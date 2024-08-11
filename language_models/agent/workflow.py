@@ -23,11 +23,19 @@ class WorkflowProcess(BaseModel):
 class WorkflowStepOutput(BaseModel):
     """Class that represents the output of a step."""
 
-    inputs: (
-        str | int | float | dict | BaseModel | list[str] | list[int] | list[float] | list[dict] | list[BaseModel] | None
-    )
+    inputs: dict[str, Any]
     output: (
-        str | int | float | dict | BaseModel | list[str] | list[int] | list[float] | list[dict] | list[BaseModel] | None
+        str
+        | int
+        | float
+        | dict[str, Any]
+        | BaseModel
+        | list[str]
+        | list[int]
+        | list[float]
+        | list[dict[str, Any]]
+        | list[BaseModel]
+        | None
     )
 
 
@@ -97,8 +105,9 @@ class WorkflowTransformationStep(BaseModel):
 
     def invoke(self, inputs: dict[str, Any], verbose: bool) -> WorkflowStepOutput:
         values = inputs[self.input_field]
+        inputs = {self.input_field: values}
         if verbose:
-            logger.opt(colors=True).info(f"<b><fg #EC9A3C>Transformation Input</fg #EC9A3C></b>: {values}")
+            logger.opt(colors=True).info(f"<b><fg #EC9A3C>Transformation Input</fg #EC9A3C></b>: {inputs}")
 
         if self.transformation == "map":
             transformed_values = map(self.function, values)
@@ -112,7 +121,7 @@ class WorkflowTransformationStep(BaseModel):
         if verbose:
             logger.opt(colors=True).info(f"<b><fg #EC9A3C>Transformation Output</fg #EC9A3C></b>: {output}")
 
-        return WorkflowStepOutput(inputs=values, output=output)
+        return WorkflowStepOutput(inputs=inputs, output=output)
 
 
 class WorkflowStateManager(BaseModel):

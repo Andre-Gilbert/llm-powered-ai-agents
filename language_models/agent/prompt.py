@@ -63,7 +63,8 @@ OUTPUT_TYPE_FLOAT = (
 )
 
 
-OUTPUT_TYPE_OBJECT_OR_STRUCT = """Your <response to the prompt> should be the final answer to the user's query and must be a JSON format with the keyword arguments: {output_schema}"""
+OUTPUT_TYPE_OBJECT_OR_STRUCT = """Your <response to the prompt> should be the final answer to the user's query and must be a JSON format with the keyword arguments:
+{output_schema}"""
 
 
 OUTPUT_TYPE_ARRAY_STRING = (
@@ -81,7 +82,8 @@ OUTPUT_TYPE_ARRAY_FLOAT = (
 )
 
 
-OUTPUT_TYPE_ARRAY_OBJECT_OR_STRUCT = """Your <response to the prompt> should be the final answer to the user's query and must be an array of JSON format with the keyword arguments: {output_schema}"""
+OUTPUT_TYPE_ARRAY_OBJECT_OR_STRUCT = """Your <response to the prompt> should be the final answer to the user's query and must be an array of JSON format with the keyword arguments:
+{output_schema}"""
 
 
 OUTPUT_TYPE_BINARY = (
@@ -92,7 +94,9 @@ OUTPUT_TYPE_BINARY = (
 OUTPUT_TYPE_BOOLEAN = """Your <response to the prompt> should be the final answer to the user's query and must be a boolean (true, false)"""
 
 
-OUTPUT_TYPE_DATE = """Your <response to the prompt> should be the final answer to the user's query and must be a date with the format: {output_schema}"""
+OUTPUT_TYPE_DATE = """Your <response to the prompt> should be the final answer to the user's query and must be a date with the format:
+{output_schema}"""
 
 
-OUTPUT_TYPE_TIMESTAMP = """Your <response to the prompt> should be the final answer to the user's query and must be a timestamp with the format: {output_schema}"""
+OUTPUT_TYPE_TIMESTAMP = """Your <response to the prompt> should be the final answer to the user's query and must be a timestamp with the format:
+{output_schema}"""

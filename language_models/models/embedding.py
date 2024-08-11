@@ -3,13 +3,15 @@
 from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
 
-_MODEL = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-
 
 class SentenceTransformerEmbeddingModel(BaseModel):
     """Class that implements a HuggingFace transformer."""
 
-    model: str = "all-MiniLM-L6-v2"
+    model: str
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        self.transformer = SentenceTransformer(self.model)
 
     def embed_texts(self, texts: list[str]) -> list[list[float]]:
         """Compute doc embeddings using a HuggingFace transformer model.
@@ -21,7 +23,7 @@ class SentenceTransformerEmbeddingModel(BaseModel):
             List of embeddings, one for each text.
         """
         texts = list(map(lambda x: x.replace("\n", " "), texts))
-        embeddings = _MODEL.encode(texts, show_progress_bar=False)
+        embeddings = self.transformer.encode(texts, show_progress_bar=False)
         return embeddings.tolist()
 
     def embed_query(self, query: str) -> list[float]:

@@ -185,7 +185,9 @@ class Agent(BaseModel):
                                 tool_output = tool.invoke(output.tool_input, self.verbose)
                                 observation = f"Tool Output: {tool_output}"
                                 if self.verbose:
-                                    logger.opt(colors=True).info(f"<fg #EC9A3C>Tool Output</fg #EC9A3C>: {tool_output}")
+                                    logger.opt(colors=True).info(
+                                        f"<b><fg #EC9A3C>Tool Output</fg #EC9A3C></b>: {tool_output}"
+                                    )
 
                                 self.chat.steps.append(f"Tool: {tool.name}")
                                 self.chat.steps.append(f"Tool Input: {output.tool_input}")

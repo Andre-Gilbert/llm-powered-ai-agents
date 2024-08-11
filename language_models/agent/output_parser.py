@@ -142,45 +142,48 @@ class LLMChainOfThoughtFinalAnswer(BaseModel):
 
 
 def get_schema_from_args(args: dict[str, Any]) -> dict[str, Any]:
-    schema = {}
+    template = '    "{field}": {field_type},  # {description}'
+    fields = []
     for field, details in args.items():
         field_type = details.get("type")
         items_type = details.get("items", {}).get("type")
         format_type = details.get("items", {}).get("format") or details.get("format")
-        if field_type == "string":
+        description = details.get("description")
+        if field_type in "string":
             if format_type == "date":
-                schema[field] = "<date>"
+                fields.append(template.format(field=field, field_type="<date>", description=description))
             elif format_type == "date-time":
-                schema[field] = "<timestamp>"
+                fields.append(template.format(field=field, field_type="<timestamp>", description=description))
             elif format_type == "email":
-                schema[field] = "<email>"
+                fields.append(template.format(field=field, field_type="<email>", description=description))
             else:
-                schema[field] = "<string>"
+                fields.append(template.format(field=field, field_type="<string>", description=description))
         elif field_type == "integer":
-            schema[field] = "<integer>"
+            fields.append(template.format(field=field, field_type="<integer>", description=description))
         elif field_type == "number":
-            schema[field] = "<float>"
+            fields.append(template.format(field=field, field_type="<float>", description=description))
         elif field_type == "boolean":
-            schema[field] = "<true or false>"
+            fields.append(template.format(field=field, field_type="<boolean>", description=description))
         elif field_type == "array":
             if items_type == "string":
                 if format_type == "date":
-                    schema[field] = ["<date>"]
+                    fields.append(template.format(field=field, field_type="<array of dates>", description=description))
                 elif format_type == "date-time":
-                    schema[field] = ["<timestamp>"]
+                    fields.append(
+                        template.format(field=field, field_type="<array of timestamps>", description=description)
+                    )
                 elif format_type == "email":
-                    schema[field] = ["<email>"]
+                    fields.append(template.format(field=field, field_type="<array of emails>", description=description))
                 else:
-                    schema[field] = ["<string>"]
+                    fields.append(
+                        template.format(field=field, field_type="<array of strings>", description=description)
+                    )
             elif items_type == "integer":
-                schema[field] = ["<integer>"]
+                fields.append(template.format(field=field, field_type="<array of integers>", description=description))
             elif items_type == "number":
-                schema[field] = ["<float>"]
-            else:
-                schema[field] = []
-        else:
-            schema[field] = None
-    return schema
+                fields.append(template.format(field=field, field_type="<array of floats>", description=description))
+    schema = "\n".join(fields)
+    return "\n".join(["{", schema, "}"])
 
 
 class AgentOutputParser(BaseModel):

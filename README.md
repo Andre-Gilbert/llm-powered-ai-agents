@@ -6,16 +6,16 @@ In today's fast-paced world of AI, there is an increasing demand for custom AI s
 
 ## Table of contents
 
-1. Chapter: [Prompting](/01_chapter_prompting.ipynb)
-2. Chapter: [Tools](/02_chapter_tools.ipynb)
-3. Chapter: [Structured Outputs](/03_chapter_structured_outputs.ipynb)
-4. Chapter: [AI Agents](/04_chapter_ai_agents.ipynb)
-5. Chapter: [AI Agent Workflows](/05_chapter_ai_agent_workflows.ipynb)
-6. Chapter: [Multi-Agents](/06_chapter_multi_agents.ipynb)
-7. Chapter: [Building Trust and Transparency in LLMs](/07_chapter_trust_and_transparency.ipynb)
-8. Chapter: [LLMs integrating with Forecasting Models](/08_chapter_forecasting_models.ipynb)
-9. Chapter: [Transforming Unstructured Data into Structured Formats](/09_chapter_unstructured_data.ipynb)
-10. Chapter: [Retrieval Augmented Generation (RAG)](/10_chapter_rag.ipynb)
+- Chapter 01: [Prompting](/01_chapter_prompting.ipynb)
+- Chapter 02: [Tools](/02_chapter_tools.ipynb)
+- Chapter 03: [Structured Outputs](/03_chapter_structured_outputs.ipynb)
+- Chapter 04: [AI Agents](/04_chapter_ai_agents.ipynb)
+- Chapter 05: [AI Agent Workflows](/05_chapter_ai_agent_workflows.ipynb)
+- Chapter 06: [Multi-Agents](/06_chapter_multi_agents.ipynb)
+- Chapter 07: [Building Trust and Transparency in LLMs](/07_chapter_trust_and_transparency.ipynb)
+- Chapter 08: [LLMs integrating with Forecasting Models](/08_chapter_forecasting_models.ipynb)
+- Chapter 09: [Transforming Unstructured Data into Structured Formats](/09_chapter_unstructured_data.ipynb)
+- Chapter 10: [Retrieval Augmented Generation (RAG)](/10_chapter_rag.ipynb)
 
 ## License
 

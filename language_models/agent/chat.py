@@ -1,4 +1,4 @@
-"""ReAct agent chat."""
+"""Agent chat."""
 
 from enum import Enum
 from typing import Any
@@ -10,20 +10,36 @@ from language_models.models.llm import ChatMessage
 
 class ReasoningStepName(str, Enum):
     PROMPT = "prompt"
+    RAW_OUTPUT = "raw_output"
+    OBSERVATION = "observation"
     THOUGHT = "thought"
     TOOL = "tool"
     FINAL_ANSWER = "final_answer"
 
 
 class ReasoningStepTool(BaseModel):
-    tool: str
-    tool_input: dict[str, Any]
-    tool_output: Any
+    name: str
+    inputs: dict[str, Any]
+    output: Any
 
 
 class ReasoningStep(BaseModel):
+    """Class that represents a reasoning step of the LLM."""
+
     name: ReasoningStepName
-    content: str | ReasoningStepTool
+    content: (
+        str
+        | int
+        | float
+        | dict[str, Any]
+        | BaseModel
+        | list[str]
+        | list[int]
+        | list[float]
+        | list[dict[str, Any]]
+        | list[BaseModel]
+        | ReasoningStepTool
+    )
 
     class Config:
         use_enum_values = True

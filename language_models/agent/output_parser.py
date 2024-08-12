@@ -107,7 +107,7 @@ class PromptingStrategy(str, Enum):
 class LLMToolUse(BaseModel):
     thought: str
     tool: str
-    tool_input: dict
+    tool_input: dict[str, Any]
 
 
 class LLMSingleCompletionFinalAnswer(BaseModel):

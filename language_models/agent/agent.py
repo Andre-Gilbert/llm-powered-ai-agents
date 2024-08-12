@@ -1,4 +1,4 @@
-"""ReAct agent."""
+"""Agent."""
 
 from __future__ import annotations
 
@@ -143,6 +143,7 @@ class Agent(BaseModel):
         while iteration <= self.iterations:
             self._trim_conversation()
             output = self.llm.get_completion(self.chat.messages)
+            self.chat.chain_of_thought.append(ReasoningStep(name=ReasoningStepName.RAW_OUTPUT, content=output))
             output, observation = self._parse_output(output)
 
             if self.prompting_strategy == PromptingStrategy.CHAIN_OF_THOUGHT:
@@ -195,7 +196,7 @@ class Agent(BaseModel):
                                     ReasoningStep(
                                         name=ReasoningStepName.TOOL,
                                         content=ReasoningStepTool(
-                                            tool=output.tool, tool_input=output.tool_input, tool_output=tool_output
+                                            name=output.tool, inputs=output.tool_input, output=tool_output
                                         ),
                                     )
                                 )
@@ -205,6 +206,10 @@ class Agent(BaseModel):
                                 observation = f"{output.tool} tool doesn't exist. Try one of these tools: {tool_names}"
 
                 self.chat.steps.append(f"Observation: {observation}")
+                if self.chat.chain_of_thought[-1].name != ReasoningStepName.TOOL:
+                    self.chat.chain_of_thought.append(
+                        ReasoningStep(name=ReasoningStepName.OBSERVATION, content=str(observation))
+                    )
                 self.chat.update(prompt)
 
             else:

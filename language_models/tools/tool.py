@@ -53,12 +53,17 @@ class Tool(BaseModel):
             )
             if decision not in ("Y", "y", "Yes", "yes"):
                 if verbose:
-                    logger.opt(colors=True).info("<fg #EC9A3C>Tool Use Approved</fg #EC9A3C>: No")
+                    logger.opt(colors=True).info("<b><fg #EC9A3C>Tool Use Approved</fg #EC9A3C></b>: No")
 
-                return "User did not approve the invocation of the tool"
+                return "\n\n".join(
+                    [
+                        f"The user did not approve the use of the tool: {self.name}",
+                        "Provide the final answer to the user's query",
+                    ]
+                )
 
             if verbose:
-                logger.opt(colors=True).info("<fg #EC9A3C>Tool Use Approved</fg #EC9A3C>: Yes")
+                logger.opt(colors=True).info("<b><fg #EC9A3C>Tool Use Approved</fg #EC9A3C></b>: Yes")
 
         if self.args is None:
             output = self.function()

@@ -13,33 +13,21 @@ class ReasoningStepName(str, Enum):
     RAW_OUTPUT = "raw_output"
     OBSERVATION = "observation"
     THOUGHT = "thought"
-    TOOL = "tool"
+    TOOL_USE = "tool_use"
+    TOOL_OUTPUT = "tool_output"
     FINAL_ANSWER = "final_answer"
 
 
-class ReasoningStepTool(BaseModel):
+class ReasoningStepToolUse(BaseModel):
     name: str
     inputs: dict[str, Any]
-    output: Any
 
 
 class ReasoningStep(BaseModel):
     """Class that represents a reasoning step of the LLM."""
 
     name: ReasoningStepName
-    content: (
-        str
-        | int
-        | float
-        | dict[str, Any]
-        | BaseModel
-        | list[str]
-        | list[int]
-        | list[float]
-        | list[dict[str, Any]]
-        | list[BaseModel]
-        | ReasoningStepTool
-    )
+    content: Any
 
     class Config:
         use_enum_values = True

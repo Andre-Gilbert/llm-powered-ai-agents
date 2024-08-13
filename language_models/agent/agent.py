@@ -13,9 +13,10 @@ from language_models.agent.chat import (
     Chat,
     ReasoningStep,
     ReasoningStepName,
-    ReasoningStepTool,
+    ReasoningStepToolUse,
 )
 from language_models.agent.output_parser import (
+    CHAIN_OF_THOUGHT_FINAL_ANSWER_INSTRUCTIONS,
     FINAL_ANSWER_INSTRUCTIONS,
     AgentOutputParser,
     LLMChainOfThoughtFinalAnswer,
@@ -130,6 +131,29 @@ class Agent(BaseModel):
             observation = error
         return output, observation
 
+    def _tool_use_approved(self, tool: Tool, tool_input: dict[str, Any]) -> bool:
+        """Approved the use of a tool."""
+        if tool.requires_approval:
+            decision = input(
+                "\n\n".join(
+                    [
+                        "Do you allow the invocation of the tool (Y/y/Yes/yes)?",
+                        f"Tool: {tool.name}",
+                        f"Tool Input: {None if tool.args else tool_input}",
+                    ]
+                )
+            )
+            if decision not in ("Y", "y", "Yes", "yes"):
+                if self.verbose:
+                    logger.opt(colors=True).info("<b><fg #EC9A3C>Tool Use Approved</fg #EC9A3C></b>: No")
+
+                return False
+
+            if self.verbose:
+                logger.opt(colors=True).info("<b><fg #EC9A3C>Tool Use Approved</fg #EC9A3C></b>: Yes")
+
+        return True
+
     def invoke(self, prompt: dict[str, Any]) -> AgentSingleCompletionOutput | AgentChainOfThoughtOutput:
         """Runs the agent given a prompt."""
         prompt = self.prompt.format(**{variable: prompt.get(variable) for variable in self.prompt_variables})
@@ -138,14 +162,12 @@ class Agent(BaseModel):
 
         self.chat.messages.append(ChatMessage(role=ChatMessageRole.USER, content=prompt))
         self.chat.steps = []
-
         iteration = 0
         while iteration <= self.iterations:
             self._trim_conversation()
             output = self.llm.get_completion(self.chat.messages)
             self.chat.chain_of_thought.append(ReasoningStep(name=ReasoningStepName.RAW_OUTPUT, content=output))
             output, observation = self._parse_output(output)
-
             if self.prompting_strategy == PromptingStrategy.CHAIN_OF_THOUGHT:
                 if output is not None:
                     if self.verbose:
@@ -155,7 +177,6 @@ class Agent(BaseModel):
                     self.chat.chain_of_thought.append(
                         ReasoningStep(name=ReasoningStepName.THOUGHT, content=output.thought)
                     )
-
                     if isinstance(output, LLMChainOfThoughtFinalAnswer):
                         if self.verbose:
                             logger.opt(colors=True).success(
@@ -183,35 +204,42 @@ class Agent(BaseModel):
 
                             tool = self.tools.get(output.tool)
                             if tool is not None:
-                                tool_output = tool.invoke(output.tool_input, self.verbose)
-                                observation = f"Tool Output: {tool_output}"
-                                if self.verbose:
-                                    logger.opt(colors=True).info(
-                                        f"<b><fg #EC9A3C>Tool Output</fg #EC9A3C></b>: {tool_output}"
-                                    )
-
-                                self.chat.steps.append(f"Tool: {tool.name}")
+                                self.chat.steps.append(f"Tool: {output.tool}")
                                 self.chat.steps.append(f"Tool Input: {output.tool_input}")
                                 self.chat.chain_of_thought.append(
                                     ReasoningStep(
-                                        name=ReasoningStepName.TOOL,
-                                        content=ReasoningStepTool(
-                                            name=output.tool, inputs=output.tool_input, output=tool_output
-                                        ),
+                                        name=ReasoningStepName.TOOL_USE,
+                                        content=ReasoningStepToolUse(name=output.tool, inputs=output.tool_input),
                                     )
                                 )
-
+                                if self._tool_use_approved(tool, output.tool_input):
+                                    tool_output = tool.invoke(output.tool_input)
+                                    self.chat.chain_of_thought.append(
+                                        ReasoningStep(name=ReasoningStepName.TOOL_OUTPUT, content=tool_output),
+                                    )
+                                    observation = f"Tool Output: {tool_output}"
+                                    if self.verbose:
+                                        logger.opt(colors=True).info(
+                                            f"<b><fg #EC9A3C>Tool Output</fg #EC9A3C></b>: {tool_output}"
+                                        )
+                                else:
+                                    observation = "\n\n".join(
+                                        [
+                                            f"The user did not approve the use of the tool: {output.tool}",
+                                            "Do not use the tool again and provide the user with the final answer",
+                                            CHAIN_OF_THOUGHT_FINAL_ANSWER_INSTRUCTIONS,
+                                        ]
+                                    )
                             else:
                                 tool_names = ", ".join(list(self.tools.keys()))
                                 observation = f"{output.tool} tool doesn't exist. Try one of these tools: {tool_names}"
 
                 self.chat.steps.append(f"Observation: {observation}")
-                if self.chat.chain_of_thought[-1].name != ReasoningStepName.TOOL:
+                if self.chat.chain_of_thought[-1].name != ReasoningStepName.TOOL_OUTPUT:
                     self.chat.chain_of_thought.append(
-                        ReasoningStep(name=ReasoningStepName.OBSERVATION, content=str(observation))
+                        ReasoningStep(name=ReasoningStepName.OBSERVATION, content=observation)
                     )
                 self.chat.update(prompt)
-
             else:
                 if isinstance(output, LLMSingleCompletionFinalAnswer):
                     if self.verbose:

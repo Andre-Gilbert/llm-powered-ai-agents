@@ -24,11 +24,11 @@ class Tool(BaseModel):
     requires_approval: bool = False
 
     @property
-    def args(self) -> dict[str, Any] | None:
+    def args(self) -> dict[str, Any]:
         """Gets the tool model JSON schema."""
         if self.args_schema is None:
             return {}
-        return self.args_schema.model_json_schema()  # ["properties"]
+        return self.args_schema.model_json_schema()
 
     def parse_input(self, tool_input: dict[str, Any]) -> dict[str, Any]:
         """Converts tool input to pydantic model."""

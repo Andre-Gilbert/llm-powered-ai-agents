@@ -8,60 +8,6 @@ import catboost as cb
 import pandas as pd
 
 _LAGS = 7
-_MEDIAN_LATITUDE = {
-    "Alaska": 61.1224,
-    "Aleutian Islands": 51.7672,
-    "Baja California": 32.36241665,
-    "California": 36.6798333,
-    "Chile": -32.443,
-    "Greece": 38.07,
-    "Hawaii": 19.3948326,
-    "Idaho": 44.3036667,
-    "Indonesia": -1.9559,
-    "Italy": 44.204,
-    "Japan": 36.306,
-    "Mexico": 16.629,
-    "Montana": 44.7548333,
-    "Nevada": 38.158,
-    "Oklahoma": 36.1025,
-    "Oregon": 43.88341665,
-    "Papua New Guinea": -5.604,
-    "Philippines": 9.242,
-    "Puerto Rico": 17.9971,
-    "Russia": 50.895,
-    "Tonga": -18.9217,
-    "Turkey": 39.117,
-    "Utah": 39.4306667,
-    "Washington": 46.5871667,
-    "Wyoming": 4,
-}
-_MEDIAN_LONGITUDE = {
-    "Alaska": -151.1221,
-    "Aleutian Islands": 178.314,
-    "Baja California": -115.57125,
-    "California": -118.8568333,
-    "Chile": -71.303,
-    "Greece": 22.52,
-    "Hawaii": -155.2838333,
-    "Idaho": -114.5975,
-    "Indonesia": 122.566,
-    "Italy": 10.717,
-    "Japan": 141.044,
-    "Mexico": -98.208,
-    "Montana": -111.0218333,
-    "Nevada": -117.8719,
-    "Oklahoma": -97.5726,
-    "Oregon": -121.93625,
-    "Papua New Guinea": 151.269,
-    "Philippines": 125.822,
-    "Puerto Rico": -66.8571,
-    "Russia": 150.9206,
-    "Tonga": -174.5247,
-    "Turkey": 28.975,
-    "Utah": -111.4066667,
-    "Washington": -122.1856667,
-    "Wyoming": -110.7056667,
-}
 
 
 def get_recent_earthquakes(
@@ -224,9 +170,7 @@ def forecast_earthquakes(region: str, days: int) -> list[dict]:
         df.depth = df.depth.fillna(df.depth_forecast)
 
     df = df.reset_index()
-    df = df[["index", "mag", "mag_forecast", "depth", "depth_forecast", "region"]]
-    df["Latitude"] = df.region.map(_MEDIAN_LATITUDE)
-    df["Longitude"] = df.region.map(_MEDIAN_LONGITUDE)
+    df = df[["index", "mag_forecast", "depth_forecast"]]
     df = df.rename(
         columns={
             "index": "Date",

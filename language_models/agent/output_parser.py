@@ -523,7 +523,12 @@ class AgentOutputParser(BaseModel):
                 if self.tool_use
                 else CHAIN_OF_THOUGHT_FINAL_ANSWER_INSTRUCTIONS
             )
-            if self.output_type in (OutputType.OBJECT, OutputType.ARRAY_OBJECT):
+            if self.output_type in (
+                OutputType.OBJECT,
+                OutputType.ARRAY_OBJECT,
+                OutputType.STRUCT,
+                OutputType.ARRAY_STRUCT,
+            ):
                 args = self.output_schema.model_json_schema()["properties"]
                 final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[self.output_type].format(
                     output_schema=get_schema_from_args(args)
@@ -566,7 +571,12 @@ class AgentOutputParser(BaseModel):
                 if self.tool_use
                 else CHAIN_OF_THOUGHT_FINAL_ANSWER_INSTRUCTIONS
             )
-            if self.output_type in (OutputType.OBJECT, OutputType.ARRAY_OBJECT):
+            if self.output_type in (
+                OutputType.OBJECT,
+                OutputType.ARRAY_OBJECT,
+                OutputType.STRUCT,
+                OutputType.ARRAY_STRUCT,
+            ):
                 args = self.output_schema.model_json_schema()["properties"]
                 final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[self.output_type].format(
                     output_schema=get_schema_from_args(args)

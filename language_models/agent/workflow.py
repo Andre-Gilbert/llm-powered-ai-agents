@@ -54,7 +54,6 @@ class WorkflowFunctionStep(BaseModel):
 
     def invoke(self, inputs: dict[str, Any], verbose: bool) -> WorkflowStepOutput:
         inputs = {key: value for key, value in inputs.items() if key in self.inputs.model_fields}
-        inputs = self.inputs.model_validate(inputs).model_dump()
         if verbose:
             logger.opt(colors=True).info(f"<b><fg #EC9A3C>Function Input</fg #EC9A3C></b>: {inputs}")
 
@@ -169,11 +168,11 @@ class Workflow(BaseModel):
     steps: list[WorkflowAgentStep | WorkflowFunctionStep | WorkflowTransformationStep]
     inputs: type[BaseModel]
     output: str
-    verbose: bool
+    verbose: bool = True
 
     def invoke(self, inputs: dict[str, Any]) -> WorkflowOutput:
         """Runs the workflow."""
-        inputs = self.inputs.model_validate(inputs).model_dump()
+        _ = self.inputs.model_validate(inputs)
         state_manager = WorkflowStateManager(state=inputs)
         for step in self.steps:
             if self.verbose:

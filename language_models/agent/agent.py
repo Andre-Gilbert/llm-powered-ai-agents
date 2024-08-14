@@ -110,9 +110,9 @@ class Agent(BaseModel):
     prompt_variables: list[str]
     output_parser: AgentOutputParser
     chat: Chat
-    prompting_strategy: PromptingStrategy
-    iterations: int = 10
-    verbose: bool
+    prompting_strategy: PromptingStrategy = PromptingStrategy.CHAIN_OF_THOUGHT
+    iterations: int = 5
+    verbose: bool = True
 
     def _trim_conversation(self) -> None:
         """Trims the chat messages to fit the LLM context length."""
@@ -312,7 +312,7 @@ class Agent(BaseModel):
             tools = None
             iterations = 1
 
-        if output_type in (OutputType.OBJECT, OutputType.ARRAY_OBJECT):
+        if output_type in (OutputType.OBJECT, OutputType.ARRAY_OBJECT, OutputType.STRUCT, OutputType.ARRAY_STRUCT):
             if output_schema is None:
                 raise ValueError(f"When using {output_type} as the output type a schema must be provided.")
 

@@ -232,7 +232,7 @@ class AgentOutputParser(BaseModel):
         thought, tool, tool_input = self._extract_tool_use(output)
         json_str = self._extract_json_str(tool_input)
         try:
-            tool_input_dict = json.loads(json_str)
+            tool_input_dict = dict(json.loads(json_str))
         except ValueError:
             tool_input_dict = self._tool_input_parser(json_str)
         return thought, tool, tool_input_dict
@@ -350,7 +350,7 @@ class AgentOutputParser(BaseModel):
                 json_str = self._extract_json_str(final_answer)
 
                 try:
-                    final_answer_dict = json.loads(json_str)
+                    final_answer_dict = dict(json.loads(json_str))
                 except ValueError:
                     final_answer_dict = self._tool_input_parser(json_str)
 
@@ -472,7 +472,7 @@ class AgentOutputParser(BaseModel):
                 for entry in final_answer_list:
                     json_str = self._extract_json_str(entry)
                     try:
-                        final_answer_dict = json.loads(json_str)
+                        final_answer_dict = dict(json.loads(json_str))
                     except ValueError:
                         final_answer_dict = self._tool_input_parser(json_str)
                     final_answer_list_dict.append(final_answer_dict)

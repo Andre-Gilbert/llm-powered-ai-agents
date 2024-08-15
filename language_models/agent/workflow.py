@@ -65,13 +65,16 @@ class WorkflowFunctionStep(BaseModel):
     function: Callable[[Any], Any]
 
     def invoke(self, inputs: dict[str, Any], verbose: bool) -> WorkflowStepOutput:
+        if verbose:
+            logger.opt(colors=True).info(f"<b><fg #2D72D2>Use Function</fg #2D72D2></b>: {self.name}")
+
         inputs = {key: value for key, value in inputs.items() if key in self.inputs.model_fields}
         if verbose:
-            logger.opt(colors=True).info(f"<b><fg #EC9A3C>Function Input</fg #EC9A3C></b>: {inputs}")
+            logger.opt(colors=True).info(f"<b><fg #EC9A3C>Inputs</fg #EC9A3C></b>: {inputs}")
 
         output = self.function(**inputs)
         if verbose:
-            logger.opt(colors=True).info(f"<b><fg #EC9A3C>Function Output</fg #EC9A3C></b>: {output}")
+            logger.opt(colors=True).info(f"<b><fg #EC9A3C>Output</fg #EC9A3C></b>: {output}")
 
         return WorkflowStepOutput(
             inputs=inputs,
@@ -98,13 +101,20 @@ class WorkflowLLMStep(BaseModel):
     agent: Agent
 
     def invoke(self, inputs: dict[str, Any], verbose: bool) -> WorkflowStepOutput:
+        if verbose:
+            logger.opt(colors=True).info(f"<b><fg #2D72D2>Use LLM</fg #2D72D2></b>: {self.name}")
+
         inputs = {variable: inputs.get(variable) for variable in self.agent.prompt_variables}
         if verbose:
-            logger.opt(colors=True).info(f"<b><fg #EC9A3C>LLM Input</fg #EC9A3C></b>: {inputs}")
+            logger.opt(colors=True).info(f"<b><fg #EC9A3C>Inputs</fg #EC9A3C></b>: {inputs}")
+
+        prompt = self.agent.prompt.format(**inputs)
+        if verbose:
+            logger.opt(colors=True).info(f"<b><fg #738091>Prompt</fg #738091></b>: {prompt}")
 
         output = self.agent.invoke(inputs)
         if verbose:
-            logger.opt(colors=True).info(f"<b><fg #EC9A3C>LLM Output</fg #EC9A3C></b>: {output.final_answer}")
+            logger.opt(colors=True).info(f"<b><fg #EC9A3C>Output</fg #EC9A3C></b>: {output.final_answer}")
 
         return WorkflowStepOutput(
             inputs=inputs,
@@ -129,10 +139,13 @@ class WorkflowTransformationStep(BaseModel):
     function: Callable[[Any], Any]
 
     def invoke(self, inputs: dict[str, Any], verbose: bool) -> WorkflowStepOutput:
+        if verbose:
+            logger.opt(colors=True).info(f"<b><fg #2D72D2>Use Transformation</fg #2D72D2></b>: {self.name}")
+
         values = inputs[self.input_field]
         inputs = {self.input_field: values}
         if verbose:
-            logger.opt(colors=True).info(f"<b><fg #EC9A3C>Transformation Input</fg #EC9A3C></b>: {inputs}")
+            logger.opt(colors=True).info(f"<b><fg #EC9A3C>Inputs</fg #EC9A3C></b>: {inputs}")
 
         if self.transformation == "map":
             transformed_values = map(self.function, values)
@@ -144,7 +157,7 @@ class WorkflowTransformationStep(BaseModel):
             output = reduce(self.function, values)
 
         if verbose:
-            logger.opt(colors=True).info(f"<b><fg #EC9A3C>Transformation Output</fg #EC9A3C></b>: {output}")
+            logger.opt(colors=True).info(f"<b><fg #EC9A3C>Output</fg #EC9A3C></b>: {output}")
 
         return WorkflowStepOutput(
             inputs=inputs,
@@ -213,9 +226,6 @@ class Workflow(BaseModel):
         state_manager = WorkflowStateManager(state=inputs)
         workflow_steps = []
         for step in self.steps:
-            if self.verbose:
-                logger.opt(colors=True).info(f"<b><fg #2D72D2>Running Step</fg #2D72D2></b>: {step.name}")
-
             output = step.invoke(state_manager.state, self.verbose)
             state_manager.update(step.name, output)
             workflow_steps.append(output.step)

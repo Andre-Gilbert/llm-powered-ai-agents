@@ -100,8 +100,8 @@ FINAL_ANSWER_INSTRUCTIONS = {
 
 
 class PromptingStrategy(str, Enum):
-    SINGLE_COMPLETION = "single completion"
-    CHAIN_OF_THOUGHT = "chain-of-thought"
+    SINGLE_COMPLETION = "single_completion"
+    CHAIN_OF_THOUGHT = "chain_of_thought"
 
 
 class LLMToolUse(BaseModel):
@@ -187,14 +187,22 @@ def get_schema_from_args(args: dict[str, Any]) -> dict[str, Any]:
 
 
 class AgentOutputParser(BaseModel):
-    """Class that parses the LLM output."""
+    """Class that parses the LLM output.
+
+    Attributes:
+        output_type: The data type of the output.
+        output_schema: The schema of the date, timestamp, struct, or object.
+        prompting_strategy: Single Completion or Chain-of-Thought.
+        tool_use: Whether the LLM uses tools.
+    """
 
     output_type: OutputType
-    output_schema: type[BaseModel] | str | None = None
+    output_schema: type[BaseModel] | str | None
     prompting_strategy: PromptingStrategy
     tool_use: bool
 
     def _extract_tool_use(self, output: str) -> tuple[str, str, str]:
+        """Extracts the use of a tool."""
         pattern = r"\s*Thought: (.*?)\n+Tool: ([a-zA-Z0-9_ ]+).*?\n+Tool Input: .*?(\{.*\})"
 
         match = re.search(pattern, output, re.DOTALL)

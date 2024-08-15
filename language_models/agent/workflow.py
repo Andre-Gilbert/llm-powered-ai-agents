@@ -3,21 +3,18 @@
 from __future__ import annotations
 
 import sys
+from enum import Enum
 from functools import reduce
 from typing import Any, Callable, Literal
 
 from loguru import logger
 from pydantic import BaseModel
 
-from language_models.agent.agent import Agent
+from language_models.agent.agent import Agent, Step, StepName
 from language_models.tools.tool import Tool
 
 logger.remove()
 logger.add(sys.stderr, format="{message}", level="INFO")
-
-
-class WorkflowProcess(BaseModel):
-    pass
 
 
 class WorkflowStepOutput(BaseModel):
@@ -37,6 +34,7 @@ class WorkflowStepOutput(BaseModel):
         | list[BaseModel]
         | None
     )
+    steps: list[Step]
 
 
 class WorkflowFunctionStep(BaseModel):
@@ -57,11 +55,18 @@ class WorkflowFunctionStep(BaseModel):
         if verbose:
             logger.opt(colors=True).info(f"<b><fg #EC9A3C>Function Input</fg #EC9A3C></b>: {inputs}")
 
-        output = self.function(**inputs)
+        output = {self.name: self.function(**inputs)}
         if verbose:
             logger.opt(colors=True).info(f"<b><fg #EC9A3C>Function Output</fg #EC9A3C></b>: {output}")
 
-        return WorkflowStepOutput(inputs=inputs, output=output)
+        return WorkflowStepOutput(
+            inputs=inputs,
+            output=output,
+            steps=[
+                Step(name=StepName.INPUTS, content=inputs),
+                Step(name=StepName.OUTPUT, content=output),
+            ],
+        )
 
 
 class WorkflowAgentStep(BaseModel):
@@ -84,7 +89,7 @@ class WorkflowAgentStep(BaseModel):
         if verbose:
             logger.opt(colors=True).info(f"<b><fg #EC9A3C>Agent Output</fg #EC9A3C></b>: {output.final_answer}")
 
-        return WorkflowStepOutput(inputs=inputs, output=output.final_answer)
+        return WorkflowStepOutput(inputs=inputs, output=output.final_answer, steps=output.steps)
 
 
 class WorkflowTransformationStep(BaseModel):
@@ -117,10 +122,18 @@ class WorkflowTransformationStep(BaseModel):
         else:
             output = reduce(self.function, values)
 
+        output = {self.name: output}
         if verbose:
             logger.opt(colors=True).info(f"<b><fg #EC9A3C>Transformation Output</fg #EC9A3C></b>: {output}")
 
-        return WorkflowStepOutput(inputs=inputs, output=output)
+        return WorkflowStepOutput(
+            inputs=inputs,
+            output=output,
+            steps=[
+                Step(name=StepName.INPUTS, content=inputs),
+                Step(name=StepName.OUTPUT, content=output),
+            ],
+        )
 
 
 class WorkflowStateManager(BaseModel):
@@ -131,6 +144,17 @@ class WorkflowStateManager(BaseModel):
     def update(self, name: str, step: WorkflowStepOutput) -> None:
         """Updates the state values."""
         self.state[name] = step.output
+
+
+class WorkflowStepName(str, Enum):
+    TRANSFORMATION = "transformation"
+    FUNCTION = "function"
+    AGENT = "agent"
+
+
+class WorkflowStep(BaseModel):
+    name: str
+    steps: list[Step]
 
 
 class WorkflowOutput(BaseModel):
@@ -150,6 +174,7 @@ class WorkflowOutput(BaseModel):
         | list[BaseModel]
         | None
     )
+    steps: list[WorkflowStep]
 
 
 class Workflow(BaseModel):
@@ -174,6 +199,7 @@ class Workflow(BaseModel):
         """Runs the workflow."""
         _ = self.inputs.model_validate(inputs)
         state_manager = WorkflowStateManager(state=inputs)
+        workflow_steps = []
         for step in self.steps:
             if self.verbose:
                 logger.opt(colors=True).info(f"<b><fg #2D72D2>Running Step</fg #2D72D2></b>: {step.name}")
@@ -185,7 +211,7 @@ class Workflow(BaseModel):
         if self.verbose:
             logger.opt(colors=True).success(f"<b><fg #32A467>Workflow Output</fg #32A467></b>: {output}")
 
-        return WorkflowOutput(inputs=inputs, output=output)
+        return WorkflowOutput(inputs=inputs, output=output, steps=workflow_steps)
 
     def as_tool(self) -> Tool:
         """Converts the workflow into an LLM tool."""

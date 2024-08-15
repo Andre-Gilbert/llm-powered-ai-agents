@@ -17,6 +17,20 @@ logger.remove()
 logger.add(sys.stderr, format="{message}", level="INFO")
 
 
+class WorkflowStepName(str, Enum):
+    TRANSFORMATION = "transformation"
+    FUNCTION = "function"
+    LLM = "llm"
+
+
+class WorkflowStep(BaseModel):
+    name: WorkflowStepName
+    steps: list[Step]
+
+    class Config:
+        use_enum_values = True
+
+
 class WorkflowStepOutput(BaseModel):
     """Class that represents the output of a step."""
 
@@ -34,7 +48,7 @@ class WorkflowStepOutput(BaseModel):
         | list[BaseModel]
         | None
     )
-    steps: list[Step]
+    step: WorkflowStep
 
 
 class WorkflowFunctionStep(BaseModel):
@@ -55,21 +69,24 @@ class WorkflowFunctionStep(BaseModel):
         if verbose:
             logger.opt(colors=True).info(f"<b><fg #EC9A3C>Function Input</fg #EC9A3C></b>: {inputs}")
 
-        output = {self.name: self.function(**inputs)}
+        output = self.function(**inputs)
         if verbose:
             logger.opt(colors=True).info(f"<b><fg #EC9A3C>Function Output</fg #EC9A3C></b>: {output}")
 
         return WorkflowStepOutput(
             inputs=inputs,
             output=output,
-            steps=[
-                Step(name=StepName.INPUTS, content=inputs),
-                Step(name=StepName.OUTPUT, content=output),
-            ],
+            step=WorkflowStep(
+                name=WorkflowStepName.FUNCTION,
+                steps=[
+                    Step(name=StepName.INPUTS, content=inputs),
+                    Step(name=StepName.OUTPUT, content=output),
+                ],
+            ),
         )
 
 
-class WorkflowAgentStep(BaseModel):
+class WorkflowLLMStep(BaseModel):
     """Class that implements an agent step.
 
     Attributes:
@@ -83,13 +100,17 @@ class WorkflowAgentStep(BaseModel):
     def invoke(self, inputs: dict[str, Any], verbose: bool) -> WorkflowStepOutput:
         inputs = {variable: inputs.get(variable) for variable in self.agent.prompt_variables}
         if verbose:
-            logger.opt(colors=True).info(f"<b><fg #EC9A3C>Agent Input</fg #EC9A3C></b>: {inputs}")
+            logger.opt(colors=True).info(f"<b><fg #EC9A3C>LLM Input</fg #EC9A3C></b>: {inputs}")
 
         output = self.agent.invoke(inputs)
         if verbose:
-            logger.opt(colors=True).info(f"<b><fg #EC9A3C>Agent Output</fg #EC9A3C></b>: {output.final_answer}")
+            logger.opt(colors=True).info(f"<b><fg #EC9A3C>LLM Output</fg #EC9A3C></b>: {output.final_answer}")
 
-        return WorkflowStepOutput(inputs=inputs, output=output.final_answer, steps=output.steps)
+        return WorkflowStepOutput(
+            inputs=inputs,
+            output=output.final_answer,
+            step=WorkflowStep(name=WorkflowStepName.LLM, steps=output.steps),
+        )
 
 
 class WorkflowTransformationStep(BaseModel):
@@ -122,17 +143,19 @@ class WorkflowTransformationStep(BaseModel):
         else:
             output = reduce(self.function, values)
 
-        output = {self.name: output}
         if verbose:
             logger.opt(colors=True).info(f"<b><fg #EC9A3C>Transformation Output</fg #EC9A3C></b>: {output}")
 
         return WorkflowStepOutput(
             inputs=inputs,
             output=output,
-            steps=[
-                Step(name=StepName.INPUTS, content=inputs),
-                Step(name=StepName.OUTPUT, content=output),
-            ],
+            step=WorkflowStep(
+                name=WorkflowStepName.TRANSFORMATION,
+                steps=[
+                    Step(name=StepName.INPUTS, content=inputs),
+                    Step(name=StepName.OUTPUT, content=output),
+                ],
+            ),
         )
 
 
@@ -144,17 +167,6 @@ class WorkflowStateManager(BaseModel):
     def update(self, name: str, step: WorkflowStepOutput) -> None:
         """Updates the state values."""
         self.state[name] = step.output
-
-
-class WorkflowStepName(str, Enum):
-    TRANSFORMATION = "transformation"
-    FUNCTION = "function"
-    AGENT = "agent"
-
-
-class WorkflowStep(BaseModel):
-    name: str
-    steps: list[Step]
 
 
 class WorkflowOutput(BaseModel):
@@ -190,7 +202,7 @@ class Workflow(BaseModel):
 
     name: str
     description: str
-    steps: list[WorkflowAgentStep | WorkflowFunctionStep | WorkflowTransformationStep]
+    steps: list[WorkflowLLMStep | WorkflowFunctionStep | WorkflowTransformationStep]
     inputs: type[BaseModel]
     output: str
     verbose: bool = True
@@ -206,6 +218,7 @@ class Workflow(BaseModel):
 
             output = step.invoke(state_manager.state, self.verbose)
             state_manager.update(step.name, output)
+            workflow_steps.append(output.step)
 
         output = state_manager.state.get(self.output)
         if self.verbose:

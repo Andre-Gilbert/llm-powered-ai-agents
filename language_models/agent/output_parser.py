@@ -110,23 +110,8 @@ class LLMToolUse(BaseModel):
     tool_input: dict[str, Any]
 
 
-class LLMSingleCompletionFinalAnswer(BaseModel):
-    final_answer: (
-        str
-        | int
-        | float
-        | dict[str, Any]
-        | BaseModel
-        | list[str]
-        | list[int]
-        | list[float]
-        | list[dict[str, Any]]
-        | list[BaseModel]
-    )
-
-
-class LLMChainOfThoughtFinalAnswer(BaseModel):
-    thought: str
+class LLMFinalAnswer(BaseModel):
+    thought: str | None = None
     final_answer: (
         str
         | int
@@ -564,7 +549,7 @@ class AgentOutputParser(BaseModel):
         final_answer = self._validate_final_answer(final_answer)
         return thought, final_answer
 
-    def parse(self, output: str) -> LLMToolUse | LLMSingleCompletionFinalAnswer | LLMChainOfThoughtFinalAnswer:
+    def parse(self, output: str) -> LLMToolUse | LLMFinalAnswer:
         if self.prompting_strategy == PromptingStrategy.CHAIN_OF_THOUGHT:
             if "Tool:" in output:
                 thought, tool, tool_input = self._parse_tool(output)
@@ -572,7 +557,7 @@ class AgentOutputParser(BaseModel):
 
             if "Final Answer:" in output:
                 thought, final_answer = self._parse_final_answer(output)
-                return LLMChainOfThoughtFinalAnswer(thought=thought, final_answer=final_answer)
+                return LLMFinalAnswer(thought=thought, final_answer=final_answer)
 
             instructions = (
                 CHAIN_OF_THOUGHT_INSTRUCTIONS_WITH_TOOLS
@@ -608,4 +593,4 @@ class AgentOutputParser(BaseModel):
             )
         else:
             final_answer = self._validate_final_answer(output)
-            return LLMSingleCompletionFinalAnswer(final_answer=final_answer)
+            return LLMFinalAnswer(final_answer=final_answer)

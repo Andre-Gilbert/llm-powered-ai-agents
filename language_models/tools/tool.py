@@ -40,21 +40,21 @@ class Tool(BaseModel):
 
     def invoke(self, tool_input: dict[str, Any]) -> Any:
         """Invokes a tool given arguments provided by an LLM."""
-        if self.args is None:
-            output = self.function()
-        else:
-            try:
-                parsed_input = self.parse_input(tool_input)
+        try:
+            parsed_input = self.parse_input(tool_input)
+            if not parsed_input:
+                output = self.function()
+            else:
                 output = self.function(**parsed_input)
-            except ValidationError as error:
-                output = "\n\n".join(
-                    [
-                        f"Could not run tool {self.name} with input:\n{tool_input}",
-                        f"The error was:\n{error}",
-                        "You need to correct your response",
-                        f"Your <input of the tool to use> must be a JSON format with the keyword arguments of:\n{self.args}",
-                    ]
-                )
+        except (ValidationError, TypeError) as error:
+            output = "\n\n".join(
+                [
+                    f"Could not run tool {self.name} with input:\n{tool_input}",
+                    f"The error was:\n{error}",
+                    "You need to correct your response",
+                    f"Your <input of the tool to use> must be a JSON format with the keyword arguments of:\n{self.args}",
+                ]
+            )
         return output
 
     def __str__(self) -> str:

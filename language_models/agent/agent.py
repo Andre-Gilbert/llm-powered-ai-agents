@@ -292,10 +292,10 @@ class Agent(BaseModel):
             if output_schema is None:
                 raise ValueError(f"When using {output_type} as the output type a schema must be provided.")
 
-            args = output_schema.model_json_schema()["properties"]
-            final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[output_type].format(
-                output_schema=get_schema_from_args(args)
-            )
+            schema = output_schema.model_json_schema()
+            if "$defs" not in schema:
+                schema = get_schema_from_args(schema["properties"])
+            final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[output_type].format(output_schema=schema)
         elif output_type in (OutputType.DATE, OutputType.TIMESTAMP):
             final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[output_type].format(output_schema=output_schema)
         else:

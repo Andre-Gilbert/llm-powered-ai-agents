@@ -358,14 +358,16 @@ class AgentOutputParser(BaseModel):
                 return final_answer_model if self.output_type == OutputType.OBJECT else final_answer_model.model_dump()
 
             except (ValueError, ValidationError) as error:
-                args = self.output_schema.model_json_schema()["properties"]
+                schema = self.output_schema.model_json_schema()
+                if "$defs" not in schema:
+                    schema = get_schema_from_args(schema["properties"])
                 raise ValueError(
                     "\n\n".join(
                         [
                             f"You made a mistake in your final answer:\n{final_answer}",
                             f"The error was:\n{error}",
                             "You need to correct your final answer",
-                            f"{OUTPUT_TYPE_OBJECT_OR_STRUCT.format(output_schema=get_schema_from_args(args))}",
+                            f"{OUTPUT_TYPE_OBJECT_OR_STRUCT.format(output_schema=schema)}",
                         ]
                     )
                 ) from error
@@ -483,13 +485,16 @@ class AgentOutputParser(BaseModel):
                     return [self.output_schema.model_validate(entry).model_dump() for entry in final_answer_list_dict]
 
             except (ValueError, ValidationError) as error:
+                schema = self.output_schema.model_json_schema()
+                if "$defs" not in schema:
+                    schema = get_schema_from_args(schema["properties"])
                 raise ValueError(
                     "\n\n".join(
                         [
                             f"You made a mistake in your final answer:\n{final_answer}",
                             "The error was:\n{error}",
                             "You need to correct your final answer",
-                            f"{OUTPUT_TYPE_OBJECT_OR_STRUCT.format(output_schema=get_schema_from_args(args))}",
+                            f"{OUTPUT_TYPE_OBJECT_OR_STRUCT.format(output_schema=schema)}",
                         ]
                     )
                 ) from error
@@ -511,21 +516,20 @@ class AgentOutputParser(BaseModel):
 
         match = re.search(pattern, output, re.DOTALL)
         if not match:
-            instructions = (
-                CHAIN_OF_THOUGHT_INSTRUCTIONS_WITH_TOOLS
-                if self.tool_use
-                else CHAIN_OF_THOUGHT_FINAL_ANSWER_INSTRUCTIONS
-            )
+            if self.tool_use:
+                instructions = CHAIN_OF_THOUGHT_INSTRUCTIONS_WITH_TOOLS
+            else:
+                instructions = CHAIN_OF_THOUGHT_FINAL_ANSWER_INSTRUCTIONS
             if self.output_type in (
                 OutputType.OBJECT,
                 OutputType.ARRAY_OBJECT,
                 OutputType.STRUCT,
                 OutputType.ARRAY_STRUCT,
             ):
-                args = self.output_schema.model_json_schema()["properties"]
-                final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[self.output_type].format(
-                    output_schema=get_schema_from_args(args)
-                )
+                schema = self.output_schema.model_json_schema()
+                if "$defs" not in schema:
+                    schema = get_schema_from_args(schema["properties"])
+                final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[self.output_type].format(output_schema=schema)
             elif self.output_type in (OutputType.DATE, OutputType.TIMESTAMP):
                 final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[self.output_type].format(
                     output_schema=self.output_schema
@@ -559,21 +563,21 @@ class AgentOutputParser(BaseModel):
                 thought, final_answer = self._parse_final_answer(output)
                 return LLMFinalAnswer(thought=thought, final_answer=final_answer)
 
-            instructions = (
-                CHAIN_OF_THOUGHT_INSTRUCTIONS_WITH_TOOLS
-                if self.tool_use
-                else CHAIN_OF_THOUGHT_FINAL_ANSWER_INSTRUCTIONS
-            )
+            if self.tool_use:
+                instructions = CHAIN_OF_THOUGHT_INSTRUCTIONS_WITH_TOOLS
+            else:
+                instructions = CHAIN_OF_THOUGHT_FINAL_ANSWER_INSTRUCTIONS
+
             if self.output_type in (
                 OutputType.OBJECT,
                 OutputType.ARRAY_OBJECT,
                 OutputType.STRUCT,
                 OutputType.ARRAY_STRUCT,
             ):
-                args = self.output_schema.model_json_schema()["properties"]
-                final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[self.output_type].format(
-                    output_schema=get_schema_from_args(args)
-                )
+                schema = self.output_schema.model_json_schema()
+                if "$defs" not in schema:
+                    schema = get_schema_from_args(schema["properties"])
+                final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[self.output_type].format(output_schema=schema)
             elif self.output_type in (OutputType.DATE, OutputType.TIMESTAMP):
                 final_answer_instructions = FINAL_ANSWER_INSTRUCTIONS[self.output_type].format(
                     output_schema=self.output_schema

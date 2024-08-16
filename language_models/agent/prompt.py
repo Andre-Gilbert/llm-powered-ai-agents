@@ -63,7 +63,9 @@ OUTPUT_TYPE_FLOAT = (
 )
 
 
-OUTPUT_TYPE_OBJECT_OR_STRUCT = """Your <response to the prompt> should be the final answer to the user's query and must be a JSON format with the keyword arguments:
+OUTPUT_TYPE_OBJECT_OR_STRUCT = """Your <response to the prompt> should be the final answer to the user's query and must be a JSON format
+
+Your <response to the prompt> should be keyword arguments of the properties:
 {output_schema}"""
 
 
@@ -82,7 +84,9 @@ OUTPUT_TYPE_ARRAY_FLOAT = (
 )
 
 
-OUTPUT_TYPE_ARRAY_OBJECT_OR_STRUCT = """Your <response to the prompt> should be the final answer to the user's query and must be an array of JSON format with the keyword arguments:
+OUTPUT_TYPE_ARRAY_OBJECT_OR_STRUCT = """Your <response to the prompt> should be the final answer to the user's query and must be an array of JSON format
+
+Your <response to the prompt> should be an array with keyword arguments of the properties:
 {output_schema}"""
 
 

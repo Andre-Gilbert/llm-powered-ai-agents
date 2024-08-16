@@ -99,7 +99,8 @@ class Agent(BaseModel):
         """Trims the chat messages to fit the LLM context length."""
         num_tokens = num_tokens_from_messages(self.chat.messages)
         while num_tokens + self.llm.max_tokens >= _MODEL_TOKEN_LIMIT[self.llm.model]:
-            del self.chat.messages[1]
+            if len(self.chat.messages) > 1:
+                del self.chat.messages[1]
             num_tokens = num_tokens_from_messages(self.chat.messages)
 
     def _parse_output(self, output: str) -> LLMToolUse | LLMFinalAnswer:
@@ -213,7 +214,11 @@ class Agent(BaseModel):
                                 tool_names = ", ".join(list(self.tools.keys()))
                                 observation = f"{output.tool} tool doesn't exist. Try one of these tools: {tool_names}"
 
+                # observation_str = f"Observation: {observation}"
+                # if not self.chat.previous_steps or self.chat.previous_steps[-1] != observation_str:
+                #     self.chat.previous_steps.append(observation_str)
                 self.chat.previous_steps.append(f"Observation: {observation}")
+
                 if self.chat.steps[-1].name != StepName.TOOL_OUTPUT:
                     self.chat.steps.append(Step(name=StepName.OBSERVATION, content=observation))
 

@@ -16,6 +16,8 @@ In today's fast-paced world of AI, there is an increasing demand for custom AI s
 - Chapter 08: [LLMs integrating with Forecasting Models](/chapter_08_forecasting_models.ipynb)
 - Chapter 09: [Working with Unstructured Data](/chapter_09_unstructured_data.ipynb)
 - Chapter 10: [Retrieval Augmented Generation (RAG)](/chapter_10_rag.ipynb)
+- Chapter 11: [Evaluating LLM Outputs](/chapter_11_evaluating_outputs.ipynb)
+- Chapter 12: [Generative UI](/chapter_12_generative_ui.ipynb)
 
 ## License
 

@@ -41,6 +41,9 @@ class FAISSVectorStore(BaseModel):
     distance_metric: DistanceMetric = DistanceMetric.COSINE_SIMILARITY
     _normalize_L2: bool = True
 
+    class Config:
+        arbitrary_types_allowed = True
+
     def add_documents(self, documents: list[Document]) -> None:
         """Adds documents to the FAISS index."""
         texts = [document.page_content for document in documents]

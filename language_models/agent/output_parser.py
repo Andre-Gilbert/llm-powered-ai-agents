@@ -1,7 +1,7 @@
 """ReAct agent output parser."""
 
 import re
-from datetime import datetime
+from datetime import date, datetime
 from enum import Enum
 from typing import Any
 
@@ -116,6 +116,9 @@ class LLMFinalAnswer(BaseModel):
         str
         | int
         | float
+        | bool
+        | date
+        | datetime
         | dict[str, Any]
         | BaseModel
         | list[str]
@@ -317,7 +320,7 @@ class AgentOutputParser(BaseModel):
 
         if self.output_type == OutputType.DATE:
             try:
-                return datetime.strptime(final_answer, self.output_schema)
+                return datetime.strptime(final_answer, self.output_schema).date()
             except ValueError as error:
                 raise ValueError(
                     "\n\n".join(
@@ -504,6 +507,7 @@ class AgentOutputParser(BaseModel):
         str
         | int
         | float
+        | bool
         | dict[str, Any]
         | BaseModel
         | list[str]

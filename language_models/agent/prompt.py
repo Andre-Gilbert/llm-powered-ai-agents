@@ -95,7 +95,7 @@ OUTPUT_TYPE_BINARY = (
 )
 
 
-OUTPUT_TYPE_BOOLEAN = """Your <response to the prompt> should be the final answer to the user's query and must be a boolean (true, false)"""
+OUTPUT_TYPE_BOOLEAN = """Your <response to the prompt> should be the final answer to the user's query and must be a boolean: true or false"""
 
 
 OUTPUT_TYPE_DATE = """Your <response to the prompt> should be the final answer to the user's query and must be a date with the format:

@@ -1,5 +1,6 @@
 """Agent chat."""
 
+from datetime import date, datetime
 from enum import Enum
 from typing import Any
 
@@ -35,6 +36,9 @@ class StepFinalAnswer(BaseModel):
         str
         | int
         | float
+        | bool
+        | date
+        | datetime
         | dict[str, Any]
         | BaseModel
         | list[str]
@@ -42,7 +46,6 @@ class StepFinalAnswer(BaseModel):
         | list[float]
         | list[dict[str, Any]]
         | list[BaseModel]
-        | None
     )
 
 

@@ -1,6 +1,6 @@
 """Sentence transformer embeddings."""
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 from sentence_transformers import SentenceTransformer
 
 
@@ -8,10 +8,17 @@ class SentenceTransformerEmbeddingModel(BaseModel):
     """Class that implements a HuggingFace transformer."""
 
     model: str
+    transformer: SentenceTransformer = Field(init=False)
 
-    def __init__(self, **data):
-        super().__init__(**data)
-        self.transformer = SentenceTransformer(self.model)
+    @model_validator(mode="before")
+    def initialize_transformer(cls, values: dict) -> dict:
+        """Ensure the SentenceTransformer is initialized."""
+        if "transformer" not in values:
+            model = values.get("model")
+            if not model:
+                raise ValueError("A model name must be provided.")
+            values["transformer"] = SentenceTransformer(model)
+        return values
 
     def embed_texts(self, texts: list[str]) -> list[list[float]]:
         """Compute doc embeddings using a HuggingFace transformer model.
@@ -36,3 +43,6 @@ class SentenceTransformerEmbeddingModel(BaseModel):
             Embedding for the query.
         """
         return self.embed_texts([query])[0]
+
+    class Config:
+        arbitrary_types_allowed = True

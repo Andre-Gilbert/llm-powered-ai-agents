@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from datetime import date, datetime
 from typing import Any
 
 import tiktoken
@@ -70,6 +71,9 @@ class AgentOutput(BaseModel):
         str
         | int
         | float
+        | bool
+        | date
+        | datetime
         | dict[str, Any]
         | BaseModel
         | list[str]
@@ -77,7 +81,6 @@ class AgentOutput(BaseModel):
         | list[float]
         | list[dict[str, Any]]
         | list[BaseModel]
-        | None
     )
     steps: list[Step]
 

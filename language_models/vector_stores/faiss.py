@@ -10,8 +10,7 @@ from typing import Any
 
 import faiss
 import numpy as np
-from langchain_core.documents import Document
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel
 
 from language_models.models.embedding import SentenceTransformerEmbeddingModel
 
@@ -22,6 +21,11 @@ class DistanceMetric(str, Enum):
     EUCLIDEAN_DISTANCE = "EUCLIDEAN_DISTANCE"
     MAX_INNER_PRODUCT = "MAX_INNER_PRODUCT"
     COSINE_SIMILARITY = "COSINE_SIMILARITY"
+
+
+class Document(BaseModel):
+    page_content: str
+    metadata: dict = {}
 
 
 class FAISSVectorStore(BaseModel):

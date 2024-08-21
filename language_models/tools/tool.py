@@ -52,7 +52,7 @@ class Tool(BaseModel):
                     f"Could not run tool {self.name} with input:\n{tool_input}",
                     f"The error was:\n{error}",
                     "You need to correct your response",
-                    f"Your <input of the tool to use> must be a JSON format with the keyword arguments of:\n{self.args}",
+                    f"Your <input of the tool to use> must be a JSON format with the keyword arguments of the properties:\n{self.args}",
                 ]
             )
         return output

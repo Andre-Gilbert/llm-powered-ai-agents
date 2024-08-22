@@ -27,7 +27,7 @@ Tool: <name of the tool to use>
 Tool Input: <input of the tool to use>
 ```
 
-Your <input of the tool to use> must be a JSON format with the keyword arguments of <name of the tool to use>
+Your <input of the tool to use> should be a JSON format and must be keyword arguments of the properties of <name of the tool to use>
 
 When you know the final answer to the user's query you should respond with:
 ```

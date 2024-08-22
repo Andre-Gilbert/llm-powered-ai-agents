@@ -209,7 +209,6 @@ class Agent(BaseModel):
                                     observation = "\n\n".join(
                                         [
                                             f"The user did not approve the use of the tool: {output.tool}",
-                                            "Do not use the tool again and provide the user with the final answer",
                                             CHAIN_OF_THOUGHT_FINAL_ANSWER_INSTRUCTIONS,
                                         ]
                                     )

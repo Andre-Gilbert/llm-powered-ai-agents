@@ -32,7 +32,7 @@ Tool: <name of the tool to use>
 Tool Input: <input of the tool to use>
 ```
 
-Your <input of the tool to use> must be a JSON format representing the keyword arguments of <name of the tool to use>
+Your <input of the tool to use> should be a JSON format and must be keyword arguments of the properties of <name of the tool to use>
 
 When you know the final answer to the user's query you should respond with:
 ```
@@ -51,7 +51,7 @@ Tool: <name of the tool to use>
 Tool Input: <input of the tool to use>
 ```
 
-Your <input of the tool to use> must be a JSON format representing the keyword arguments of <name of the tool to use>"""
+Your <input of the tool to use> should be a JSON format and must be keyword arguments of the properties of <name of the tool to use>"""
 
 
 CHAIN_OF_THOUGHT_FINAL_ANSWER_INSTRUCTIONS = """You should respond with:
@@ -198,8 +198,7 @@ class AgentOutputParser(BaseModel):
             raise ValueError(
                 "\n\n".join(
                     [
-                        f"You made a mistake in your response:\n{output}",
-                        "Your need to correct your response",
+                        f"Could not parse your response:\n{output}",
                         f"{CHAIN_OF_THOUGHT_TOOL_INSTRUCTIONS}",
                     ]
                 )
@@ -216,8 +215,7 @@ class AgentOutputParser(BaseModel):
             raise ValueError(
                 "\n\n".join(
                     [
-                        f"You made a mistake in your JSON format:\n{tool_input}",
-                        "Your need to correct your response",
+                        f"Could not parse your JSON format:\n{tool_input}",
                         f"{CHAIN_OF_THOUGHT_TOOL_INSTRUCTIONS}",
                     ]
                 )
@@ -266,7 +264,6 @@ class AgentOutputParser(BaseModel):
                         [
                             f"You made a mistake in your final answer:\n{final_answer}",
                             f"The error was:\n{error}",
-                            "You need to correct your final answer",
                             f"{OUTPUT_TYPE_INTEGER}",
                         ]
                     )
@@ -281,7 +278,6 @@ class AgentOutputParser(BaseModel):
                         [
                             f"You made a mistake in your final answer:\n{final_answer}",
                             f"The error was:\n{error}",
-                            "You need to correct your final answer",
                             f"{OUTPUT_TYPE_FLOAT}",
                         ]
                     )
@@ -296,7 +292,6 @@ class AgentOutputParser(BaseModel):
                     [
                         f"You made a mistake in your final answer:\n{final_answer}",
                         "The error was:\nCould not parse binary.",
-                        "You need to correct your final answer",
                         f"{OUTPUT_TYPE_BINARY}",
                     ]
                 )
@@ -312,7 +307,6 @@ class AgentOutputParser(BaseModel):
                     [
                         f"You made a mistake in your final answer:\n{final_answer}",
                         "The error was:\nCould not parse boolean.",
-                        "You need to correct your final answer",
                         f"{OUTPUT_TYPE_BOOLEAN}",
                     ]
                 )
@@ -327,7 +321,6 @@ class AgentOutputParser(BaseModel):
                         [
                             f"You made a mistake in your final answer:\n{final_answer}",
                             f"The error was:\n{error}",
-                            "You need to correct your final answer",
                             f"{OUTPUT_TYPE_DATE.format(self.output_schema)}",
                         ]
                     )
@@ -342,7 +335,6 @@ class AgentOutputParser(BaseModel):
                         [
                             f"You made a mistake in your final answer:\n{final_answer}",
                             f"The error was:\n{error}",
-                            "You need to correct your final answer",
                             f"{OUTPUT_TYPE_TIMESTAMP.format(self.output_schema)}",
                         ]
                     )
@@ -369,7 +361,6 @@ class AgentOutputParser(BaseModel):
                         [
                             f"You made a mistake in your final answer:\n{final_answer}",
                             f"The error was:\n{error}",
-                            "You need to correct your final answer",
                             f"{OUTPUT_TYPE_OBJECT_OR_STRUCT.format(output_schema=schema)}",
                         ]
                     )
@@ -388,7 +379,6 @@ class AgentOutputParser(BaseModel):
                         [
                             f"You made a mistake in your final answer:\n{final_answer}",
                             "The error was:\nCould not parse array of strings.",
-                            "You need to correct your final answer",
                             f"{OUTPUT_TYPE_ARRAY_STRING}",
                         ]
                     )
@@ -400,7 +390,7 @@ class AgentOutputParser(BaseModel):
                         [
                             f"You made a mistake in your final answer:\n{final_answer}",
                             "The error was:\n{error}",
-                            "You need to correct your final answer",
+                            # "You need to correct your final answer",
                             f"{OUTPUT_TYPE_ARRAY_STRING}",
                         ]
                     )
@@ -419,7 +409,6 @@ class AgentOutputParser(BaseModel):
                         [
                             f"You made a mistake in your final answer:\n{final_answer}",
                             "The error was:\nCould not parse array of integers.",
-                            "You need to correct your final answer",
                             f"{OUTPUT_TYPE_ARRAY_INTEGER}",
                         ]
                     )
@@ -431,7 +420,6 @@ class AgentOutputParser(BaseModel):
                         [
                             f"You made a mistake in your final answer:\n{final_answer}",
                             "The error was:\n{error}",
-                            "You need to correct your final answer",
                             f"{OUTPUT_TYPE_ARRAY_INTEGER}",
                         ]
                     )
@@ -450,7 +438,6 @@ class AgentOutputParser(BaseModel):
                         [
                             f"You made a mistake in your final answer:\n{final_answer}",
                             "The error was:\nCould not parse array of floats.",
-                            "You need to correct your final answer",
                             f"{OUTPUT_TYPE_ARRAY_FLOAT}",
                         ]
                     )
@@ -462,7 +449,6 @@ class AgentOutputParser(BaseModel):
                         [
                             f"You made a mistake in your final answer:\n{final_answer}",
                             "The error was:\n{error}",
-                            "You need to correct your final answer",
                             f"{OUTPUT_TYPE_ARRAY_FLOAT}",
                         ]
                     )
@@ -496,7 +482,6 @@ class AgentOutputParser(BaseModel):
                         [
                             f"You made a mistake in your final answer:\n{final_answer}",
                             "The error was:\n{error}",
-                            "You need to correct your final answer",
                             f"{OUTPUT_TYPE_OBJECT_OR_STRUCT.format(output_schema=schema)}",
                         ]
                     )
@@ -544,8 +529,7 @@ class AgentOutputParser(BaseModel):
             raise ValueError(
                 "\n\n".join(
                     [
-                        f"You made a mistake in your response:\n{output}",
-                        "You need to correct your response",
+                        f"Could not parse your final answer:\n{output}",
                         f"{instructions}",
                         f"{final_answer_instructions}",
                     ]
@@ -592,8 +576,7 @@ class AgentOutputParser(BaseModel):
             raise ValueError(
                 "\n\n".join(
                     [
-                        f"You made a mistake in your response:\n{output}",
-                        "You need to correct your response",
+                        f"Could not parse your response:\n{output}",
                         f"{instructions}",
                         f"{final_answer_instructions}",
                     ]
